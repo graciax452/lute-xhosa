@@ -336,6 +336,24 @@ existing unit tests still pass — unit tests only cover words already
 known to matter, and a bigger lexicon's new collisions show up
 precisely on words that weren't being tested before.
 
+**Two more found by the user directly**, testing a real self-written
+isiXhosa paragraph (a beginner-level self-introduction) rather than
+either seed story — same lesson again, a new text finds new
+collisions no matter how much validation came before:
+- **`molo`** ("hello", a greeting) resolved through the noun branch as
+  `m` (bare cl.1/3 prefix, valid before a vowel-initial stem) + `olo`
+  (a bulk-imported root) — coincidental lexicon hit, same mechanism as
+  `imini`.
+- **`apha`** ("here", a locative adverb) resolved through the verb
+  branch as `a` (cl.5/6 subject concord — genuinely needed, see
+  `adala` "s/he creates") + `ph` (bulk-imported root `-pha-`, "give")
+  + terminal vowel `-a` — i.e. read as "s/he gives," a real verb form
+  that happens to share a spelling with the unrelated adverb. True
+  homonym, same category as `uthi`.
+
+Both fixed via `WORD_EXCEPTIONS`; `adala` and `umntu` (the legitimate
+uses of the same prefixes) confirmed still correct.
+
 **Post-import re-validation**: both stories were re-run through the
 fixed engine after all six collisions above were resolved. "Ingonyama
 nenkawu" went from 7/338 to 56/338 words splitting; "Indoda
@@ -369,6 +387,20 @@ lever, not just a one-off fix.
   a real orthographic prefix boundary the engine doesn't parse; excluded
   from the bulk import rather than forced through the plain-prefix
   logic (see above). Falls back safely to whole-word.
+- **The locative `e-` prefix is not modeled at all** — flagged by the
+  user directly (`eKapa` "in/at Cape Town," `eMzantsi` [Afrika] "in
+  [South Africa]"). Currently falls back safely to whole-word, which is
+  correct-by-omission but not correct-by-design: no rule has actually
+  been written. Not a quick add — isiXhosa locatives are formed several
+  ways (bare `e-` + stem for some place names, `e-...-eni` circumfix
+  for common nouns with consonant-strengthening at the stem boundary,
+  interacting with whether the noun already carries its own class
+  prefix, the same "locative on an already-prefixed noun" question
+  flagged for `kubuxoki` above) and none of it is confirmed yet from
+  Oosthuysen or isixhosa.click. Needs its own sourced design pass
+  before writing `NOUN_CLASS_PREFIXES`-style rules — do not guess a
+  single `e-` = locative rule, since place names in particular are
+  exactly the class most likely to break a generic rule.
 - **`NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` are no longer tiny** —
   695 noun roots and 405 verb roots after the isixhosa.click bulk
   import (up from ~30/~9), but still far short of full coverage for

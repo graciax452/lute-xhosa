@@ -107,6 +107,19 @@ PROPER_NOUNS = set()
 # because the alternative (a specific verb-shaped guess) risks being
 # actively wrong, but flagged here as lower-confidence than the others
 # -- worth a fluent-speaker check.
+#
+# "molo" (a greeting, "hello") wrongly resolved through the noun
+# branch as "m" (bare class 1/3 prefix, valid before a vowel-initial
+# stem) + "olo" (a bulk-imported root) -- a coincidental lexicon hit,
+# same category as "imini". Found by the user directly, testing real
+# isiXhosa sentences.
+#
+# "apha" ("here", a locative adverb) wrongly resolved through the verb
+# branch as "a" (cl.5/6 subject concord, e.g. "adala" = "s/he
+# creates") + "ph" (bulk-imported root, "-pha-" "give") + terminal
+# vowel "-a" -- i.e. read as "s/he gives", a real verb form that
+# happens to share a spelling with the unrelated adverb. True
+# homonym, same category as "uthi". Found by the user directly.
 WORD_EXCEPTIONS = {
     "kudala",
     "uthi",
@@ -116,6 +129,8 @@ WORD_EXCEPTIONS = {
     "uluthi",
     "imini",
     "kubuxoki",
+    "molo",
+    "apha",
 }
 
 # Confirmed past-tense ("a-past") subject-concord fusions, matched the

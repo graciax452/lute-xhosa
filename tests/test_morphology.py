@@ -145,11 +145,18 @@ def test_verb_noun_branch_collision_exceptions():
     check("uluthi", ["uluthi"])  # stick (cl.11) -- NOT u+lu+th(say)+i
     check("imini", ["imini"])  # day -- NOT imi(cl.4, legitimate but wrong here)+ni("gender")
     check("kubuxoki", ["kubuxoki"])  # in lies/falsehood -- lower-confidence judgment call, see rules.py
+    check("molo", ["molo"])  # hello (greeting) -- NOT m(cl.1/3, before vowel stem)+olo
+    check("Molo", ["Molo"])
+    check("apha", ["apha"])  # here (adverb) -- NOT a(cl.5/6 concord)+ph(give)+a
     # Same derivational/root families, but NOT exceptions -- these
     # correctly resolve on their own since they don't end in a valid
     # terminal vowel (verb-slot's stem resolver requires one):
     check("uqhekezo", ["u", "qhekezo"])
     check("imithi", ["imi", "thi"])
+    # "a" and "m" are genuinely useful prefixes elsewhere -- confirm the
+    # exceptions above didn't collaterally break them:
+    check("adala", ["a", "dala"])  # s/he creates (cl.5/6 concord "a" + root "dal" + -a)
+    check("umntu", ["um", "ntu"])  # person
 
 
 def test_empty_and_minimal_input():
