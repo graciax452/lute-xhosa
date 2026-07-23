@@ -109,6 +109,33 @@ def test_perfect_tense_not_yet_modeled():
     check("ndifundile", ["ndifundile"])  # I have learnt / I am educated
 
 
+def test_real_story_correct_splits():
+    # From "Ingonyama nenkawu" (The Lion and the Monkey) -- confirms
+    # the engine generalizes to real narrative text it wasn't built
+    # against, same validation method as lute-shona's grandpa-tortoise
+    # story. Of note: "kufa" here comes from "ndiza kufa" ("I am going
+    # to die") -- the periphrastic future construction (auxiliary
+    # "za" + infinitive with the augment dropped) that the pre-
+    # Oosthuysen research flagged but hadn't verified; this is the
+    # first real-text confirmation of it, and it splits correctly even
+    # though the engine gets there via the class 15/17 subject-concord
+    # path rather than a dedicated augment-dropped-infinitive rule --
+    # same token output either way.
+    check("indlela", ["i", "ndlela"])  # the way/manner
+    check("kufa", ["ku", "fa"])  # (going) to die -- periphrastic future, augment dropped
+    check("ndihambe", ["ndi", "hambe"])  # that I may go (subjunctive, root "hamb" + -e)
+    check("ukubona", ["uku", "bona"])  # the seeing / to see
+    check("ukutya", ["uku", "tya"])  # food / to eat
+
+
+def test_real_story_collisions():
+    # Two more real collisions from the same story, both protected via
+    # WORD_EXCEPTIONS -- see rules.py for the exact mechanism.
+    check("Kudala", ["Kudala"])  # "long ago" -- NOT ku(cl.15/17 concord)+dal(create)+a
+    check("kudala", ["kudala"])
+    check("uthi", ["uthi"])  # "you say" -- NOT u(augment)+thi(seeded noun root "tree/stick")
+
+
 def test_empty_and_minimal_input():
     check("", [""])
     check("a", ["a"])

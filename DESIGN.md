@@ -157,8 +157,47 @@ between subject and object). isiXhosa's is not a single mechanism:
 - **Future**: reportedly periphrastic (auxiliary `ukuza` "to come" +
   infinitive, per the earlier cross-checked summary's Wiktionary
   citation) — genuinely different from Shona's single fused prefix
-  `-cha-`, and **not yet independently verified** against Oosthuysen or
-  implemented.
+  `-cha-`. Not yet independently verified against Oosthuysen directly,
+  but partially corroborated by real text: "Ngoku ndiza kufa ndifela
+  inceba yam" ("Now I am going to die...") in the story tested in the
+  next section uses exactly this shape (`ndiza` + infinitive `kufa`,
+  augment dropped). No dedicated engine support added — it happens to
+  split correctly already because `kufa`'s `ku-` gets matched as the
+  class 15/17 subject concord by the general verb-slot branch, landing
+  on the same tokens a dedicated periphrastic-future rule would
+  produce. Worth building a real rule for this later if it turns out
+  to matter for cases the current accidental path doesn't cover, but
+  not urgent given the output is already correct.
+
+## Real-text validation round (`Ingonyama nenkawu` — The Lion and the Monkey)
+
+Same validation method as lute-shona's grandpa-tortoise story: run a
+real, unfamiliar narrative through `split_word` rather than only
+testing against constructed examples. Of 338 unique words, 7 split and
+331 stayed whole (expected — the seed lexicons are still small). Of
+the 7: 5 were correct out of the box (`indlela`, `kufa`, `ndihambe`,
+`ukubona`, `ukutya` — see `test_real_story_correct_splits`), and 2 were
+genuine collisions, both found by testing, not by inspection:
+
+- **`kudala`** — verb-slot resolves it as `ku-` (cl.15/17 subject
+  concord) + `dal-` (seeded root "create") + `-a`, i.e. "it creates" —
+  because `dal` is a seeded verb root and the shape happens to fit.
+  Actual meaning in context ("Kudala ndilapha okoko kwakusasa" — "I've
+  been here a long time, since this morning"): the fixed temporal
+  adverb "long ago"/"for a long time," unrelated to the verb.
+- **`uthi`** — the noun branch resolves it as `u-` (augment, cl.1a/11)
+  + `thi` (seeded noun root "tree/stick"), i.e. "a stick." Actual
+  meaning in context ("...uthi, '...'" — "...and say, '...'"): the verb
+  "you say" (`u-` + `-thi-`). A true homonym, same category as
+  lute-shona's `kamba` (tortoise vs. small house) — `thi` isn't even
+  seeded as a verb root, so only the wrong noun reading could fire.
+
+Both protected via `WORD_EXCEPTIONS` rather than any structural change
+— removing the `u`/`ku` prefixes that enable these collisions would
+also break the many words they correctly split elsewhere (`uthando`,
+`uluthi`, `ukutya`, `ukufa`, ...). Same lesson as lute-shona's
+`mudzidzisi`/`mukanwa`: a short, useful prefix will occasionally
+collide with a real word; fix the specific collision, keep the prefix.
 
 ## Known gaps, not guessed at
 

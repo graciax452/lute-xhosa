@@ -53,10 +53,27 @@ PROPER_NOUNS = set()
 
 # Whole-word bypasses. See lute-shona DESIGN.md section 7/9 for the
 # three kinds of entries that belong here (mis-fires, confirmed-but-
-# ambiguous forms, real branch collisions) -- none confirmed yet for
-# isiXhosa, will be added the same way Shona's were: found by dry-
-# running real text, not guessed preemptively.
-WORD_EXCEPTIONS = set()
+# ambiguous forms, real branch collisions). Two real collisions found
+# by running an actual isiXhosa story ("Ingonyama nenkawu" -- The Lion
+# and the Monkey) through split_word, same discipline as lute-shona's
+# mudzidzisi/mukanwa/kamba:
+#   - "kudala" -- verb-slot wrongly resolves it as ku- (cl.15/17
+#     subject concord) + dal- (root "create") + -a, "it creates",
+#     because "dal" is a seeded verb root. In the story it's the fixed
+#     temporal adverb "long ago"/"for a long time" ("Kudala ndilapha
+#     okoko kwakusasa" -- "I've been here a long time, since this
+#     morning"), unrelated to the verb.
+#   - "uthi" -- the noun branch wrongly resolves it as u- (augment,
+#     cl.1a/11) + thi (seeded noun root "tree/stick"), "a stick". In
+#     the story it's the verb "you say" (u- + -thi- "say", e.g.
+#     "Dibanisa iintupha zakho uthi, '...'" -- "Join your thumbs and
+#     say, '...'"). A true homonym -- "thi" isn't even seeded as a verb
+#     root, so only the wrong noun reading could ever fire; same
+#     category as lute-shona's "kamba" (tortoise vs. small house).
+WORD_EXCEPTIONS = {
+    "kudala",
+    "uthi",
+}
 
 # Confirmed past-tense ("a-past") subject-concord fusions, matched the
 # same way as VERB_SUBJECT_PREFIXES. Oosthuysen p.201 (12.8, "The
