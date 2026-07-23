@@ -99,8 +99,8 @@ def split_word(word: str) -> List[str]:
 
 
 def _try_infinitive(word: str, lword: str) -> Optional[List[str]]:
-    "Infinitive noun-class prefix + verb root, if isiXhosa has an equivalent to Shona's class 15 ku-. Placeholder prefix -- confirm the actual form before relying on this."
-    infinitive_prefix = "uku"  # PLACEHOLDER -- confirm against real isiXhosa material, do not assume
+    "uku- + verb root (class 15 infinitive, confirmed Oosthuysen 2.14 p.43), disambiguated from the identically-spelled class 15/17 noun/locative prefix by requiring a root-lexicon hit, same pattern as Shona's ku-."
+    infinitive_prefix = "uku"
     if not lword.startswith(infinitive_prefix):
         return None
     stem_tokens = _resolve_stem(word[len(infinitive_prefix) :])

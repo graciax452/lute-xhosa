@@ -2,13 +2,19 @@
 
 An isiXhosa language parser plugin for [Lute3](https://github.com/LuteOrg/lute-v3), splitting agglutinative noun/verb morphology into separately trackable tokens.
 
-**Status: scaffold only.** This is a fork of [lute-shona](https://github.com/graciax452/lute-shona), started per that project's `DESIGN.md` (section 10) forking guidance, before any real isiXhosa data has been added. Every table in `lute_xhosa_parser/rules.py` is currently empty, so the parser installs, runs, and safely leaves every word whole — it doesn't split anything useful yet. See that file's docstring for exactly what's expected to change once real reference material comes in.
+Fork of [lute-shona](https://github.com/graciax452/lute-shona), following that project's `DESIGN.md` (section 10) forking guidance. **Read lute-shona's `DESIGN.md` first** — it's the actual design methodology (lexicon-gated stripping to avoid overstemming, the token model, the closed-construction pattern); this project's own `DESIGN.md` only covers what's isiXhosa-specific.
 
-## What this will solve (once populated)
+## What this solves
 
-isiXhosa, like Shona, is space-delimited — Lute's stock "Space Delimited" parser already gets word boundaries right, including click-consonant letters (`c`, `q`, `x` and their combinations), which are just ordinary letters within a word, not separate tokens. The problem is that a single space-delimited word is often several grammatical morphemes glued together (noun class prefix, verb subject/tense/object/extension affixes), leaving the whole inflected word as one unclickable blob in Lute. See lute-shona's `README.md`/`DESIGN.md` for the full writeup of this problem and the lexicon-gated design used to solve it — the same design is copied here as a starting point.
+Same problem as Shona: isiXhosa is space-delimited (Lute's stock "Space Delimited" parser gets word boundaries right, including click-consonant letters — `c`, `q`, `x` — which are just ordinary letters within a word), but a single space-delimited word is often several grammatical morphemes glued together, leaving the whole inflected word as one unclickable blob.
 
-**Read lute-shona's `DESIGN.md` before adding data here.** It documents the full methodology (lexicon-gated stripping to avoid overstemming, the token model, the closed-construction pattern, real mistakes made and corrected) that this fork should follow, not reinvent — and explicitly flags what's Shona-specific (don't assume it transfers) vs. what's likely general to Bantu-language morphology (the engine architecture, the safety principles).
+**Genuinely different from Shona**, not just a data swap: isiXhosa nouns have a two-layer prefix (an augment vowel plus a class prefix, e.g. `abantu` = `a-` + `ba-` + `-ntu`), and object concords use different surface forms from subject concords in several classes (unlike Shona, where they mostly overlap). See `DESIGN.md` for how the augment+prefix structure turned out to need only more data, not new engine code.
+
+## Status
+
+Working noun-class splitting (all confirmed classes with singular/plural pairs, cross-class shared roots, derivational examples) and verb splitting (infinitives, present-tense `-ya-` infix, class-1 `a-past`). **Not yet implemented**: the `-ile` perfect suffix (structurally different from a prefix TAM marker — needs its own design pass), verbal extensions (causative/applicative/passive — not yet sourced), future tense (reportedly periphrastic, unconfirmed), and most persons' `a-past` forms beyond class 1. See `DESIGN.md` for the full list of what's confirmed vs. deferred, with page citations to the source grammar.
+
+Source: J.C. Oosthuysen, *The Grammar of isiXhosa* (SUN PRESS, 2016), extracted directly from the PDF (see `DESIGN.md` for how — it's a scanned-image book with no text layer).
 
 ## Install
 
@@ -16,7 +22,7 @@ isiXhosa, like Shona, is space-delimited — Lute's stock "Space Delimited" pars
 pip install -e .
 ```
 
-into whichever venv runs your Lute3 instance. Restart Lute; "isiXhosa" should appear in `Enabled parsers:` at startup and in the language dropdown (it registers correctly even with empty tables — it just won't split anything until `rules.py` has real data). Create an isiXhosa language in Lute's Settings with parser type `lute_xhosa`.
+into whichever venv runs your Lute3 instance. Restart Lute; "isiXhosa" should appear in `Enabled parsers:` at startup and in the language dropdown. Create an isiXhosa language in Lute's Settings with parser type `lute_xhosa`.
 
 ## Tests
 
@@ -24,7 +30,7 @@ into whichever venv runs your Lute3 instance. Restart Lute; "isiXhosa" should ap
 python tests/test_morphology.py
 ```
 
-Currently only checks the empty-lexicon safe-fallback behavior. Expand the same way lute-shona's test suite grew: dry-run every new example against `split_word()` directly before writing down an expected result — lute-shona's history has several instances of a hand-traced expectation turning out wrong once actually run.
+Every check was dry-run against the actual code before being written down — see `DESIGN.md` for why that discipline matters here specifically (it caught a real bug: `VERB_ROOT_LEXICON` needs bare roots without the terminal vowel, same convention as lute-shona).
 
 ## Optional: highlight grammar tokens
 
