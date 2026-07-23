@@ -90,10 +90,51 @@ def split_word(word: str) -> List[str]:
         return infinitive
 
     verb = _try_verb_slot(word, lword)
+    noun = _try_noun(word, lword)
+
+    if verb is not None and noun is not None:
+        # Both branches independently resolved -- prefer whichever
+        # analysis has fewer tokens (fewer morphemes guessed), the same
+        # "shallowest wins" principle _resolve_stem and _try_verb_slot
+        # already apply within their own search, extended here across
+        # the verb/noun branch split itself. This specifically fixes
+        # the systematic case where "a"(cl.5/6 subject)+"ba"(cl.2
+        # object) as a verb-slot reading happens to spell out exactly
+        # the extremely common "aba-" class-2 noun prefix: any
+        # deverbal/agentive noun (root+"i", a fully productive Bantu
+        # pattern -- "X-i" from any verb root "-X-" means "one who
+        # Xs") was silently unreachable via the noun branch, since the
+        # verb branch (tried first, for the usual reason -- see this
+        # function's docstring) always resolved to a 3-token subject+
+        # object+root reading before the noun branch's simpler 2-token
+        # prefix+root reading ever got a chance. Found via
+        # scripts/check_collisions.py, which exhaustively checks the
+        # whole subject x TAM x object x root x terminal-vowel space
+        # against the noun lexicon rather than relying only on
+        # real-text sampling -- see that script's docstring.
+        if len(noun) < len(verb):
+            return noun
+        if len(noun) == len(verb):
+            # Equal token count -- most of these are harmless (the two
+            # analyses happen to land on the identical boundary anyway,
+            # e.g. subject "ba" == bare cl.2 noun prefix "ba", same
+            # split either way). Where they genuinely conflict, prefer
+            # whichever analysis's first token (the matched affix) is
+            # longer: a longer match is inherently less likely to be
+            # coincidental than a short one, the same reasoning
+            # _try_noun already uses to try longer prefixes before
+            # shorter ones. This resolves the entire remaining set
+            # found by scripts/check_collisions.py after the token-
+            # count preference above (e.g. "abanga" -- noun "aba"+"nga"
+            # wins over verb "a"+"banga", since "aba" is a much more
+            # specific match than the bare 1-letter subject "a").
+            if len(noun[0]) > len(verb[0]):
+                return noun
+        return verb
+
     if verb is not None:
         return verb
 
-    noun = _try_noun(word, lword)
     if noun is not None:
         return noun
 
@@ -112,7 +153,28 @@ def _try_infinitive(word: str, lword: str) -> Optional[List[str]]:
 
 
 def _try_verb_slot(word: str, lword: str) -> Optional[List[str]]:
-    "subject prefix + optional TAM + optional object marker + resolved stem."
+    """
+    Subject prefix + optional TAM + optional object marker + resolved
+    stem. Candidates are tried shallowest-first: no TAM/no object
+    before either optional slot is consumed, one optional slot before
+    both. This is the same "least-stripped match wins" principle
+    _resolve_stem already applies to extensions (see its docstring),
+    extended here to the TAM/object slots.
+
+    This matters because the old nested-loop order (tam candidates
+    outer, obj candidates inner, both trying real matches before None)
+    was actually biased toward consuming *more* optional structure, not
+    less -- when a word had *both* a valid "consume this object marker"
+    reading and a valid "don't" reading, the old order always picked
+    the one that consumed more, even when that was wrong. Found via
+    "ibambe" ("it holds," from -bamba-, root "bamb"): the old order
+    picked i+ba(object "them")+mb(root "-mba-", "to dig")+e over the
+    correct i+bambe (root "bamb", no object) purely because the
+    object-marker candidate was tried first -- see rules.py's
+    WORD_EXCEPTIONS entry for the fix-at-data-level half of this; this
+    is the fix-at-code-level half, for any future instance of the same
+    pattern.
+    """
     for subj in _SUBJECT_PREFIXES_BY_LENGTH:
         if not lword.startswith(subj):
             continue
@@ -120,24 +182,36 @@ def _try_verb_slot(word: str, lword: str) -> Optional[List[str]]:
         after_subj = word[len(subj) :]
         lafter_subj = after_subj.lower()
 
-        tam_matches = [t for t in TAM_MARKERS if lafter_subj.startswith(t)]
-        for tam in sorted(tam_matches, key=len, reverse=True) + [None]:
-            after_tam = after_subj[len(tam) :] if tam else after_subj
-            lafter_tam = after_tam.lower()
+        tam_matches = sorted((t for t in TAM_MARKERS if lafter_subj.startswith(t)), key=len, reverse=True)
 
-            obj_matches = [o for o in OBJECT_MARKERS if lafter_tam.startswith(o)]
-            for obj in sorted(obj_matches, key=len, reverse=True) + [None]:
-                after_obj = after_tam[len(obj) :] if obj else after_tam
-                stem_tokens = _resolve_stem(after_obj)
-                if stem_tokens is None:
-                    continue
-                tokens = [subj_label]
-                if tam:
-                    tokens.append(after_subj[: len(tam)])
-                if obj:
-                    tokens.append(after_tam[: len(obj)])
-                tokens.extend(stem_tokens)
-                return tokens
+        # Priority-ordered (tam, obj) candidates: fewest optional slots
+        # consumed first; ties (same number of slots consumed) broken
+        # by longest match, TAM-only before object-only at depth 1
+        # (arbitrary but deterministic -- no case has needed the
+        # opposite tie-break yet).
+        candidates = [(None, None)]
+        obj_matches_no_tam = sorted((o for o in OBJECT_MARKERS if lafter_subj.startswith(o)), key=len, reverse=True)
+        candidates += [(None, obj) for obj in obj_matches_no_tam]
+        candidates += [(tam, None) for tam in tam_matches]
+        for tam in tam_matches:
+            after_tam = after_subj[len(tam) :]
+            lafter_tam = after_tam.lower()
+            obj_matches = sorted((o for o in OBJECT_MARKERS if lafter_tam.startswith(o)), key=len, reverse=True)
+            candidates += [(tam, obj) for obj in obj_matches]
+
+        for tam, obj in candidates:
+            after_tam = after_subj[len(tam) :] if tam else after_subj
+            after_obj = after_tam[len(obj) :] if obj else after_tam
+            stem_tokens = _resolve_stem(after_obj)
+            if stem_tokens is None:
+                continue
+            tokens = [subj_label]
+            if tam:
+                tokens.append(after_subj[: len(tam)])
+            if obj:
+                tokens.append(after_tam[: len(obj)])
+            tokens.extend(stem_tokens)
+            return tokens
     return None
 
 

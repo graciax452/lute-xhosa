@@ -93,6 +93,18 @@ def test_present_tense_ya_infix():
     check("bayahamba", ["ba", "ya", "hamba"])  # they walk/are walking
 
 
+def test_verb_slot_prefers_shallowest_resolution():
+    # _try_verb_slot tries candidates shallowest-first (no TAM/object
+    # before either is consumed) -- see that function's docstring.
+    # "ibambe" ("it holds," -bamba-, root "bamb") used to be a
+    # WORD_EXCEPTIONS entry: the old search order tried consuming
+    # object marker "ba" first, which happened to *also* resolve
+    # (leftover "mbe" hit the unrelated root "-mba-", "to dig"),
+    # beating the correct no-object reading purely by trying it first.
+    # Now resolves correctly on its own, no exception needed.
+    check("ibambe", ["i", "bambe"])
+
+
 def test_a_past_tense():
     # Only class 1's a-past fusion ("wa-") is confirmed so far --
     # other persons' forms are NOT guessed, see rules.py.
@@ -136,47 +148,56 @@ def test_real_story_collisions():
 
 
 def test_verb_noun_branch_collision_exceptions():
-    # Collisions surfaced immediately after the isixhosa.click bulk
-    # import (see rules.py/DESIGN.md for the exact mechanism of each) --
-    # both from newly-added verb roots colliding with existing noun
-    # roots on words ending in a valid terminal vowel.
-    check("umqhekezi", ["umqhekezi"])  # burglar (cl.1) -- NOT u+m+qhekez(break)+i
-    check("isiqhekezi", ["isiqhekezi"])  # expert breaker (cl.7) -- NOT i+si+qhekez(break)+i
-    check("umthi", ["umthi"])  # tree (cl.3) -- NOT u+m+th(say)+i
-    check("uluthi", ["uluthi"])  # stick (cl.11) -- NOT u+lu+th(say)+i
+    # Collisions that still genuinely need a WORD_EXCEPTIONS bypass --
+    # either no competing noun reading exists at all (nothing for the
+    # verb/noun tie-break to prefer), or the correct reading needs a
+    # locative-on-an-already-prefixed-noun pattern _try_noun can't
+    # produce (see rules.py for which is which).
+    check("kudala", ["kudala"])  # "long ago" -- NOT ku(cl.15/17 concord)+dal(create)+a
+    check("Kudala", ["Kudala"])
+    check("uthi", ["uthi"])  # "you say" -- both readings give the same
+    # boundary anyway (see rules.py), kept mainly as documentation
     check("imini", ["imini"])  # day -- NOT imi(cl.4, legitimate but wrong here)+ni("gender")
     check("kubuxoki", ["kubuxoki"])  # in lies/falsehood -- lower-confidence judgment call, see rules.py
     check("molo", ["molo"])  # hello (greeting) -- NOT m(cl.1/3, before vowel stem)+olo
     check("Molo", ["Molo"])
     check("apha", ["apha"])  # here (adverb) -- NOT a(cl.5/6 concord)+ph(give)+a
-    # Seven more from the Kaikki-Xhosa bulk import round -- see rules.py
-    # for the exact mechanism of each.
-    check("imithi", ["imithi"])  # trees -- NOT i+mith(be pregnant)+i;
-    # note this used to be a *correct* split before this round (see
-    # below), now needs the exception like its singular "umthi" already did
-    check("umsila", ["umsila"])  # tail -- NOT u+m+sil(brew/grind)+a
+    check("ndiyazi", ["ndiyazi"])  # I know [it] -- NOT ndi+ya+z(come)+i; no
+    # competing noun reading exists here at all
+    check("kumsila", ["kumsila"])  # to/at the tail -- needs a locative-on-
+    # whole-noun reading (ku-+"umsila") that _try_noun can't produce
     check("msila", ["msila"])
-    check("kumsila", ["kumsila"])
-    check("umhlaba", ["umhlaba"])  # earth/world -- NOT u+m+hlab(stab)+a
-    check("umzingeli", ["umzingeli"])  # hunter -- NOT u+m+zingel(hunt)+i
-    check("ndiyazi", ["ndiyazi"])  # I know [it] -- NOT ndi+ya+z(come)+i
-    check("amabi", ["amabi"])  # bad things -- NOT a+m+ab(share)+i
-    check("ibambe", ["ibambe"])  # it holds -- NOT i+ba(object)+mb(dig)+e;
-    # the correct reading (root "bamb", no object) also resolves on its
-    # own, but search order tries the object-marker reading first
-    # since both happen to succeed -- see rules.py for the general risk
-    # this points at.
-    check("umrhwebi", ["umrhwebi"])  # trader -- NOT u+m+rhweb(barter)+i
-    check("abarhwebi", ["abarhwebi"])  # traders (plural)
-    check("kubarhwebi", ["kubarhwebi"])  # to/among the traders
-    # Same derivational/root families, but NOT exceptions -- these
-    # correctly resolve on their own since they don't end in a valid
-    # terminal vowel (verb-slot's stem resolver requires one):
+    check("kubarhwebi", ["kubarhwebi"])  # to/among the traders -- same
+    # locative-on-whole-noun gap as kumsila
+    # Same derivational/root family, but NOT an exception -- correctly
+    # resolves on its own since it doesn't end in a valid terminal
+    # vowel (verb-slot's stem resolver requires one):
     check("uqhekezo", ["u", "qhekezo"])
     # "a" and "m" are genuinely useful prefixes elsewhere -- confirm the
     # exceptions above didn't collaterally break them:
     check("adala", ["a", "dala"])  # s/he creates (cl.5/6 concord "a" + root "dal" + -a)
     check("umntu", ["um", "ntu"])  # person
+
+
+def test_verb_noun_branch_ties_resolved_by_architecture():
+    # These used to be WORD_EXCEPTIONS entries -- all fixed once
+    # split_word() started preferring the noun reading over a
+    # coincidentally-also-valid verb reading (fewer tokens, then longer
+    # first-token-match as the tie-break -- see morphology.py and
+    # rules.py's WORD_EXCEPTIONS comment for the full story and
+    # scripts/check_collisions.py, which is what found the systemic
+    # scale of this: 3,779 words affected lexicon-wide, not just these).
+    check("umqhekezi", ["um", "qhekezi"])  # burglar (cl.1) -- NOT u+m+qhekez(break)+i
+    check("isiqhekezi", ["isi", "qhekezi"])  # expert breaker (cl.7)
+    check("umthi", ["um", "thi"])  # tree (cl.3) -- NOT u+m+th(say)+i
+    check("uluthi", ["ulu", "thi"])  # stick (cl.11)
+    check("imithi", ["imi", "thi"])  # trees
+    check("umsila", ["um", "sila"])  # tail -- NOT u+m+sil(brew/grind)+a
+    check("umhlaba", ["um", "hlaba"])  # earth/world -- NOT u+m+hlab(stab)+a
+    check("umzingeli", ["um", "zingeli"])  # hunter -- NOT u+m+zingel(hunt)+i
+    check("amabi", ["ama", "bi"])  # bad things -- NOT a+m+ab(share)+i
+    check("umrhwebi", ["um", "rhwebi"])  # trader -- NOT u+m+rhweb(barter)+i
+    check("abarhwebi", ["aba", "rhwebi"])  # traders (plural)
 
 
 def test_empty_and_minimal_input():

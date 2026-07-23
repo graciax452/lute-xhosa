@@ -447,6 +447,92 @@ text this round wasn't built or checked against, the same way the
 sentences after the first round, not by any amount of further
 self-review.
 
+## Architecture fixes: from patching collisions to preventing them
+
+The scale note above turned out to understate the problem. Real-text
+testing (two stories, ~540 combined words) is inherently sample-based
+— it can prove collisions exist, but it can't prove they don't. Asked
+directly whether the strategy needed to change as more data sources get
+added, the answer was yes, on two fronts, both implemented and verified
+in the same session as the Kaikki-Xhosa import above.
+
+**1. An automated, exhaustive collision checker**
+(`scripts/check_collisions.py`) — instead of waiting for real text to
+happen to contain a colliding word, enumerate the whole closed
+combinatorial space (every subject × optional TAM × optional object ×
+every verb root × every terminal vowel) and check each resulting
+string against every noun surface form (every class prefix × every
+noun root) directly. This is exhaustive within that space, not sample-
+based. Running it against the lexicon as it stood after the
+Kaikki-Xhosa import found **3,779** words where a verb-slot reading and
+a noun-slot reading both resolve — a hundred-fold jump over what the
+two stories had found (12) and even the original documented isixhosa.
+click round (2), because it's checking the *entire* lexicon
+combinatorially rather than whatever happens to appear in ~540 words
+of narrative text.
+
+**2. Two fixes in `split_word()` itself** (`morphology.py`), not more
+`WORD_EXCEPTIONS` entries — the volume made a data-only fix clearly
+unworkable (nobody is going to maintain 3,779 exception entries, and
+every future lexicon addition would add more):
+- **Prefer fewer tokens.** When both the verb and noun branches
+  resolve, prefer whichever produces fewer tokens — the same
+  "shallowest/least-guessed-structure wins" principle `_resolve_stem`
+  already applies to extension-stripping, and `_try_verb_slot`'s own
+  TAM/object search order (below) now also applies, extended here
+  across the branch split itself. This alone fixed 1,972 of the 3,779
+  — every case where the verb reading needed to consume an optional
+  TAM or object slot that the noun reading didn't need at all.
+- **Prefer the longer first-token match on remaining ties.** Among
+  cases where both branches produce the *same* token count (e.g.
+  subject "a" + root vs. noun prefix "ama-" + root, both 2 tokens),
+  prefer whichever analysis's first token is longer — a longer
+  matched affix is inherently less likely to be a coincidence than a
+  short one, the same reasoning `_try_noun` already uses internally
+  (try longer prefixes before shorter ones). This resolved the entire
+  remainder: of the 1,807 remaining ties, 1,807 turned out to be
+  *harmless* (both readings land on the identical token boundary
+  anyway — e.g. subject "ba" and bare class-2 noun prefix "ba" are
+  the same string, so it doesn't matter internally which branch
+  "wins"), and the fix brought the genuinely conflicting count to
+  **zero**, per the checker's own final tally.
+
+**3. A separate, code-level fix for `_try_verb_slot`'s internal search
+order** — found first, actually, before the two branch-level fixes
+above: the old order tried TAM/object candidates (real matches) before
+the "none consumed" case, meaning it was already structurally biased
+toward the *more*-consumed reading even within the verb branch alone.
+Found via `"ibambe"` ("it holds," root `bamb`): the old order picked
+`i+ba(object "them")+mb(root "-mba-", "to dig")+e` over the correct
+`i+bambe` (no object, root `bamb`) purely because the object-marker
+candidate was tried first, even though the no-object reading also
+independently resolved. Fixed the same way: try the shallowest
+(fewest-slots-consumed) combination first.
+
+**Net effect**: 11 `WORD_EXCEPTIONS` entries that used to paper over
+individual instances of this pattern (`umqhekezi`, `isiqhekezi`,
+`umthi`, `uluthi`, `imithi`, `umsila`, `umhlaba`, `umzingeli`, `amabi`,
+`umrhwebi`, `abarhwebi`, plus `ibambe` from the internal-order fix)
+were removed once confirmed genuinely fixed — not just masked — per
+this project's own "don't leave stale exceptions" policy. A handful of
+entries remain and legitimately can't be fixed this way:
+`kumsila`/`msila`/`kubarhwebi` need a locative-on-an-already-prefixed-
+noun reading `_try_noun` structurally can't produce (it only ever
+strips one prefix layer), and `ndiyazi`/`apha`/`molo`/`kudala`/
+`kubuxoki`/`uthi`/`imini` have no competing noun reading at all for
+the tie-break to prefer, or (for `imini`) the conflict is within the
+noun branch's own prefix search, not a verb/noun branch issue.
+
+**Going forward**: run `scripts/check_collisions.py` after *any* future
+lexicon growth, before real-text testing — it's cheap (seconds to run),
+exhaustive within its combinatorial scope, and would have caught this
+entire class of problem on day one of the Kaikki-Xhosa import instead
+of after the fact. Real-text testing still matters for what the
+checker structurally can't see (vowel-elision-hidden roots like
+`ndiyazi`, locative-on-whole-noun gaps, genuine homonyms with no
+morphological signal at all) — the two tools are complementary, not
+redundant.
+
 ## Known gaps, not guessed at
 
 - **Verbal extensions** (causative/applicative/passive/reciprocal) —

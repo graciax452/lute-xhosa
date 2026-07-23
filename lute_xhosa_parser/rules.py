@@ -69,7 +69,22 @@ PROPER_NOUNS = set()
 #     "Dibanisa iintupha zakho uthi, '...'" -- "Join your thumbs and
 #     say, '...'"). A true homonym -- "thi" isn't even seeded as a verb
 #     root, so only the wrong noun reading could ever fire; same
-#     category as lute-shona's "kamba" (tortoise vs. small house).
+#     category as lute-shona's "kamba" (tortoise vs. small house). Note
+#     this is a case where the *verb* reading is the correct one (the
+#     opposite of most entries below), so the noun/verb tie-break added
+#     later (see morphology.py's split_word) doesn't change anything
+#     here either way -- both readings happen to produce the identical
+#     token boundary (["u", "thi"]), so it's harmless regardless of
+#     which branch "wins" internally; kept as an exception mainly as
+#     documentation of the ambiguity, not because the displayed output
+#     would otherwise be wrong.
+# UPDATE: "umqhekezi"/"isiqhekezi"/"umthi"/"uluthi" (all originally
+# listed here for the mechanism described just below) are now fixed by
+# a later architectural change, not a data patch -- see the "NOT here"
+# note further down for the general story, and morphology.py's
+# split_word for the mechanism. Kept the historical explanation below
+# since the underlying collision (verb-slot finding "qhekez"/"th" as a
+# root) still exists in the lexicon; only which branch *wins* changed.
 # Two more found immediately after the isixhosa.click bulk import (see
 # DESIGN.md): "umqhekezi" ("burglar", cl.1) and "isiqhekezi" ("expert
 # breaker", cl.7) both end in the valid terminal vowel -i, and the bulk
@@ -126,78 +141,85 @@ PROPER_NOUNS = set()
 # comment on NOUN_ROOT_LEXICON) -- same category as "molo"/"apha"
 # above, each a common/basic word wrongly resolved through the verb
 # branch once the much larger new vocabulary gave it a coincidental
-# match:
+# match. UPDATE: most of these turned out to be fixable at the
+# architecture level, not the data level -- see the big note below
+# ("NOT here: most of the above") for what actually happened and why
+# only some entries are still in the set at the bottom of this file.
 # - "imithi" ("trees", imi+thi) -- NOT i(cl.9/10 concord)+mith(from
-#   "-mitha-", "to be pregnant")+i.
+#   "-mitha-", "to be pregnant")+i. FIXED, no longer an exception.
 # - "umsila"/"msila"/"kumsila" ("tail") -- NOT u/ku(subject)+m(object,
-#   him/her)+sil(from "-sila-", "to brew/grind")+a.
+#   him/her)+sil(from "-sila-", "to brew/grind")+a. "umsila" FIXED; the
+#   locative/bare forms "kumsila"/"msila" are NOT (see below).
 # - "umhlaba" ("earth/world") -- NOT u(subject)+m(object)+hlab(from
 #   "-hlaba-", "to stab") -- this one predates the Kaikki-Xhosa round
 #   ("hlab" was already seeded from isixhosa.click) but was only found
-#   now, testing a real story that happens to use the word.
+#   now, testing a real story that happens to use the word. FIXED.
 # - "umzingeli" ("hunter", an agentive noun) -- NOT u(subject)+
-#   m(object)+zingel(from "-zingela-", "to hunt")+i. Unlike lute-shona's
-#   "mufundisi" (which turned out to be a genuinely correct
-#   compositional agentive reading), the verb-branch token boundary
-#   here (u|m|zingeli, 3 tokens) doesn't match what the correct
-#   noun-branch boundary would be (um|zingeli, 2 tokens) -- these are
-#   different splits, not two labels for the same one, so this is a
-#   real collision, not a coincidentally-correct alternate parse.
+#   m(object)+zingel(from "-zingela-", "to hunt")+i. FIXED.
 # - "ndiyazi" ("I know [it]") -- NOT ndi+ya(present)+z(from "-za-",
 #   "to come")+i. The real root is "-azi-" ("to know"), but its
 #   initial vowel elides after the "-ya-" present marker (ya+azi ->
 #   yazi) -- an unmodeled vowel-coalescence process (same category as
 #   lute-shona's chi-/zvi- + vowel-initial-stem gap), which is what
 #   leaves "zi" exposed to a coincidental match against an unrelated
-#   short root instead.
+#   short root instead. NOT fixed -- no noun reading competes here at
+#   all (there's nothing for the tie-break to prefer), so this stays a
+#   genuine data-level exception.
 # - "amabi" ("bad things", ama-+bi) -- NOT a(cl.5/6 concord)+
-#   m(object)+ab(from "-aba-", "to share/distribute")+i.
-# - "ibambe" ("it holds"/similar, from "-bamba-", "to hold/catch") --
-#   resolves via the verb branch either way, but the *search order*
-#   picks the wrong resolution: trying object marker "ba" first
-#   leaves "mbe", which also happens to hit a real (different) root
-#   ("-mba-", "to dig"), so "i-ba-mbe" wins over the correct
-#   "i-bambe" (no object, root "bamb") purely because optional-object
-#   candidates are tried before the no-object case. This is a
-#   different *kind* of risk than the others -- not a stray
-#   coincidental root, but two *both-valid* resolutions where the
-#   search order favors the shallower, wrong one. Worth remembering as
-#   its own risk category if more instances turn up: a longer lexicon
-#   makes it more likely that consuming an optional slot (object
-#   marker, TAM) *also* accidentally resolves, not just that skipping
-#   it does.
-# Three more from the same root family, once "umrhwebi" ("trader",
-# singular) confirmed the pattern: "abarhwebi" ("traders", plural) and
-# "kubarhwebi" ("to/among the traders", locative on the whole class-2
-# noun with the augment elided) both resolve the same wrong way --
-# subject/concord + object "ba"(them) + rhweb(from "-rhweba-", "to
-# barter/trade") + i, instead of the correct aba-/ku-+aba- + "rhwebi"
-# noun reading. Originally "kubarhwebi" was left alone as a lower-
-# confidence guess (no sibling to compare against), but with
-# "umrhwebi"/"abarhwebi" both confirmed wrong via the identical
-# mechanism, the same fix clearly applies here too.
+#   m(object)+ab(from "-aba-", "to share/distribute")+i. FIXED.
+#
+# NOT here: most of the above, plus "ibambe"/"umqhekezi"/"isiqhekezi"/
+# "umthi"/"uluthi"/"umrhwebi"/"abarhwebi" (all documented further up
+# with their original mechanism), turned out to belong to one systemic
+# pattern rather than N separate one-off bugs: _try_verb_slot was
+# always tried before _try_noun, and short subject/object concords
+# (a, i, u, ba, ...) very often literally spell out common noun
+# prefixes (aba-, ama-, um-, ...) once concatenated. Once the lexicon
+# grew large enough that a matching verb root usually existed too
+# (extremely common for agentive nouns, since "root+i" = "one who
+# [root]s" is a fully productive pattern), *most* deverbal/agentive
+# nouns in the whole lexicon were silently unreachable, not just the
+# handful this project happened to test.
+#
+# Running scripts/check_collisions.py (which exhaustively checks the
+# subject x TAM x object x root x terminal-vowel space against the
+# noun lexicon, rather than relying on real-text sampling) found 3,779
+# words where this could happen. Fixed almost entirely at the code
+# level, in split_word (see morphology.py): when both branches resolve,
+# prefer whichever produces fewer tokens (1,972 fixed -- covers every
+# case where the verb reading needed a TAM/object the noun reading
+# didn't), then among remaining ties, prefer whichever analysis's first
+# token (the matched affix) is longer, since a longer match is
+# inherently less likely to be coincidental (fixed the rest -- 0
+# genuinely conflicting cases left, per the script's own final count;
+# 1,807 of the "ties" turned out to be harmless, both readings landing
+# on the identical token boundary anyway, e.g. subject "ba" == the bare
+# cl.2 noun prefix "ba"). This resolved 11 of the entries that used to
+# be listed as WORD_EXCEPTIONS here -- removed once confirmed fixed,
+# per this file's own "two-way street, don't leave stale exceptions"
+# policy. Re-run scripts/check_collisions.py after any future lexicon
+# growth; it's meant to be the first check, before real-text testing,
+# not a one-time cleanup.
+#
+# What's still a real WORD_EXCEPTIONS entry, and why the architectural
+# fix above doesn't reach it: "kubarhwebi"/"kumsila"/"msila" need a
+# *locative-on-an-already-prefixed-noun* reading (ku- + the whole noun
+# "abarhwebi"/"umsila", augment/prefix intact) that _try_noun can't
+# produce at all -- it only ever strips one prefix layer, so there's no
+# competing noun analysis for the tie-break to prefer over the wrong
+# verb one. Same underlying gap as lute-shona's "mumunda"/"kumusha"
+# pattern (locative on a whole noun), just not yet hit by a case where
+# seeding the whole noun as its own lexicon entry would fix it cleanly.
 WORD_EXCEPTIONS = {
     "kudala",
     "uthi",
-    "umqhekezi",
-    "isiqhekezi",
-    "umthi",
-    "uluthi",
     "imini",
     "kubuxoki",
     "molo",
     "apha",
-    "imithi",
-    "umsila",
-    "msila",
     "kumsila",
-    "umhlaba",
-    "umzingeli",
+    "msila",
     "ndiyazi",
-    "amabi",
-    "ibambe",
-    "umrhwebi",
-    "abarhwebi",
     "kubarhwebi",
 }
 
