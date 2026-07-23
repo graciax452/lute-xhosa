@@ -44,6 +44,7 @@ from typing import List, Optional
 
 from lute_xhosa_parser.rules import (
     NOUN_CLASS_PREFIXES,
+    NOUN_PREFIXES_REQUIRE_VOWEL_STEM,
     NOUN_ROOT_LEXICON,
     OBJECT_MARKERS,
     PAST_SUBJECT_PREFIXES,
@@ -53,6 +54,7 @@ from lute_xhosa_parser.rules import (
     VERB_EXTENSIONS,
     VERB_ROOT_LEXICON,
     VERB_SUBJECT_PREFIXES,
+    VOWELS,
     WORD_EXCEPTIONS,
 )
 
@@ -140,12 +142,24 @@ def _try_verb_slot(word: str, lword: str) -> Optional[List[str]]:
 
 
 def _try_noun(word: str, lword: str) -> Optional[List[str]]:
-    "longest-matching noun class prefix, gated on the remaining stem being a known root."
+    """
+    longest-matching noun class prefix, gated on the remaining stem
+    being a known root. A handful of prefixes (NOUN_PREFIXES_REQUIRE_VOWEL_STEM)
+    are only valid before a vowel-initial stem -- enforced explicitly,
+    since without it a coincidental lexicon hit for the wrong reading
+    (e.g. "ub-" + "huti" for "ubhuti", when the correct split is "u-" +
+    "bhuti") would win purely by being the longer candidate. See
+    rules.py for how this was found.
+    """
     for prefix, _class_id in _NOUN_PREFIXES_BY_LENGTH:
         if not lword.startswith(prefix):
             continue
         stem = word[len(prefix) :]
-        if stem and stem.lower() in NOUN_ROOT_LEXICON:
+        if not stem:
+            continue
+        if prefix in NOUN_PREFIXES_REQUIRE_VOWEL_STEM and stem[0].lower() not in VOWELS:
+            continue
+        if stem.lower() in NOUN_ROOT_LEXICON:
             return [word[: len(prefix)], stem]
     return None
 

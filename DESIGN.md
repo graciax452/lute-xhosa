@@ -51,20 +51,31 @@ and what's deliberately deferred rather than guessed at.
   and contradicted every other source — the kind of thing to actively
   watch for and discard, not average in with better sources.
 
-## What's carried over from Shona unchanged, and why it turned out to be enough
+## What's carried over from Shona unchanged, and why it turned out to be (almost) enough
 
-`morphology.py`'s cascade structure, the lexicon-gating principle, and
-even `_try_noun`'s code are **unchanged from Shona** — no new stripping
-logic was needed for isiXhosa's two-layer augment+prefix noun structure
-(see below). `_try_verb_slot` and `_resolve_stem` are also structurally
-unchanged; only the *data* they read (`VERB_SUBJECT_PREFIXES`,
+`morphology.py`'s cascade structure and the lexicon-gating principle
+are unchanged from Shona, and initially `_try_noun`'s code was too —
+no new stripping logic was needed for isiXhosa's two-layer
+augment+prefix noun structure (see below), and every example gathered
+before the bulk lexicon import (noun class pairs, derivational nouns,
+infinitives, present tense, a-past) dry-ran correctly against the
+unmodified engine on the first try — a genuinely useful data point for
+how much of lute-shona's architecture is Bantu-general rather than
+Shona-specific, as speculated in that project's forking guidance.
+`_try_verb_slot` and `_resolve_stem` remain structurally unchanged
+throughout; only the *data* they read (`VERB_SUBJECT_PREFIXES`,
 `OBJECT_MARKERS`, `TAM_MARKERS`, `PAST_SUBJECT_PREFIXES`,
-`VERB_ROOT_LEXICON`) is isiXhosa-specific. Every example gathered so
-far (noun class pairs, derivational nouns, infinitives, present tense,
-a-past) dry-ran correctly against this unchanged engine on the first
-try — a genuinely useful data point for how much of lute-shona's
-architecture actually is Bantu-general rather than Shona-specific, as
-speculated in that project's forking guidance.
+`VERB_ROOT_LEXICON`) is isiXhosa-specific.
+
+`_try_noun` did end up needing one real change, though — not from the
+augment+prefix structure itself, but from growing the lexicon by 20x
+(see the bulk-import section below): a latent gap where the
+"before vowel-initial stem" allomorphs (`ab-`, `am-`, `is-`, `iz-`,
+`ub-`) weren't actually vowel-gated in code, just in a comment. It took
+a big enough lexicon for a coincidental collision to surface the gap.
+Worth remembering: "unchanged and correct so far" isn't the same claim
+as "provably correct" — it just means nothing has stressed that code
+path hard enough yet.
 
 Not carried over: `_try_negative_have()` and `_try_sati_construction()`
 (Shona's confirmed `ha- + concord + -na` and `[subject] + sati`
@@ -199,10 +210,148 @@ also break the many words they correctly split elsewhere (`uthando`,
 `mudzidzisi`/`mukanwa`: a short, useful prefix will occasionally
 collide with a real word; fix the specific collision, keep the prefix.
 
+(These 7/338 numbers are the pre-bulk-import baseline, seed lexicon
+only. See below for what the same story looks like after the
+isixhosa.click import — coverage jumps substantially, at the cost of
+a handful of new collisions from the larger lexicon.)
+
+## Bulk lexicon import from isixhosa.click — coverage vs. collision surface
+
+Manually seeding roots one story at a time doesn't scale — after two
+real-text validation rounds the lexicons still only had ~30 noun roots
+and ~9 verb roots, and a second unrelated story ("Indoda engenakhaya")
+only split 4/202 unique words. The fix wasn't a smarter algorithm, it
+was more root vocabulary — the engine already handles the *grammar*
+generically; what's missing was always vocabulary.
+
+**Source**: [isixhosa.click](https://isixhosa.click) / its
+[database repo](https://github.com/IsiXhosa-click/database)
+(`words.csv`), a UCT student-led project backed by SADiLaR (South
+African Centre for Digital Language Resources) and UCT Computer
+Science. **Licensed CC BY-SA 4.0.** 2,336 entries total, each tagged
+with `part_of_speech` and (for nouns) an explicit `noun_class` number;
+verb entries store the bare root already separated from the `uku-`
+infinitive marker (e.g. `bona` "see", `infinitive: ukubona`).
+
+Several other sources were checked and rejected before landing on this
+one — worth recording since they came from repeated, confident-sounding
+chatbot suggestions that didn't hold up:
+- `asideofcode/duramazwi` on GitHub, claimed to be "the complete
+  backend repository for the famous Duramazwi Shona dictionary" — it's
+  an unrelated small community web app (188 commits, 2 stars) with no
+  stated data provenance. Verified directly against its README.
+- VaShona.com, claimed to have "100,000+ words, downloadable" — the
+  site is real, but its own footer says "All rights reserved. Do not
+  distribute or reproduce," and there is no bulk export. Not usable
+  even if the word count claim were true.
+- The official ALLEX/Duramazwi academic dictionaries (Oosthuysen's
+  publisher's institutional cousins) have no public digital access
+  point at all that could be found — the University of Oslo project
+  pages from the 1990s/2000s are dead (404/503), and ALRI's own page
+  lists the dictionaries as completed works with no download or
+  purchase information.
+
+**Extraction method**: for each single-word noun entry, try every
+prefix in `NOUN_CLASS_PREFIXES` (longest first, same as the live
+engine) rather than filtering by the CSV's stated class label — the
+first pass filtered by label and only matched 846/1585 nouns, because
+`NOUN_CLASS_PREFIXES` doesn't duplicate every prefix under every class
+it applies to (e.g. `um`/`m` are labeled class 1 only, even though
+they also apply to class 3). Fixing the script to mirror the real
+`_try_noun` matching order (ignore labels, just try every prefix
+string) recovered nearly all of it: 1150/1585 matched, with the 4
+unmatched being genuine CSV data-quality issues (swapped
+english/xhosa columns). Multi-word phrases (369), proper nouns, and
+hyphenated loanword entries (`i-orenji`, "orange") were excluded —
+the hyphen marks a real orthographic prefix boundary the current
+engine doesn't parse, and forcing it through the plain prefix-strip
+logic produced malformed roots like `-abscissa` (caught by spot-
+checking before merging, not left in). Verb entries: strip the final
+vowel from the already-bare `xhosa` column, cross-checked against the
+`infinitive` column where present. Net result: 666 new noun roots,
+396 new verb roots, roughly **20x** the seed lexicon size.
+
+**A real, non-obvious bug caught before merging**: several extracted
+roots came out capitalized (`Bhulu`, `Cawe`, `Xhosa`, `Zulu`...) —
+isiXhosa capitalizes proper-noun-like stems (ethnonyms, day names,
+language names) even when prefixed with a lowercase class prefix
+(`umBhulu`, not `umbhulu`). `_try_noun` always does
+`stem.lower() in NOUN_ROOT_LEXICON` at lookup time, so a capitalized
+lexicon entry would silently never match anything. Fixed by lowercasing
+every extracted root before merging — a one-line fix, but the kind that
+would have quietly wasted ~15 entries if the extraction hadn't been
+inspected before merging rather than trusted blind.
+
+**A more important lesson: growing the lexicon grows the collision
+surface, not just the coverage.** Six real collisions surfaced
+immediately after merging, found by re-running both validation stories
+through the updated engine rather than assuming a pure-addition change
+was safe:
+- **`ubhuti`** ("brother") started splitting as `ub`+`huti` instead of
+  `u`+`bhuti`, because the bulk import added `huti` as a root, and the
+  `ub-` allomorph (documented as "only valid before a vowel-initial
+  stem," e.g. `uboya`) was never actually *enforced* to require a vowel
+  — it just happened to never have a coincidental lexicon hit for the
+  wrong reading before. This was a **latent engine gap**, not just a
+  data problem: fixed by adding `NOUN_PREFIXES_REQUIRE_VOWEL_STEM`
+  (`ab`, `am`, `is`, `iz`, `ub`) and enforcing it explicitly in
+  `_try_noun`. `uboya` (genuinely vowel-initial) still resolves
+  correctly; `ubhuti` (consonant-initial) no longer wrongly matches
+  the allomorph.
+- **`umqhekezi`/`isiqhekezi`** (derivational nouns, "burglar"/"expert
+  breaker") started wrongly resolving through verb-slot once `qhekez`
+  (from the bulk-imported verb `-qhekeza`, "break in/off") became a
+  seeded verb root — e.g. `u-`(you)+`m-`(him)+`qhekez-`(break)+`i` =
+  "you break him." `uqhekezo` (same family, ends in `-o`, not a valid
+  terminal vowel) is unaffected on its own.
+- **`umthi`/`uluthi`** ("tree"/"stick") started wrongly resolving the
+  same way once `th` (bare root of `-thi`, "say") was bulk-imported —
+  the exact same underlying homonym (`thi` = tree/stick vs. `-thi-` =
+  say) that had already caused the `uthi` exception, now recurring on
+  two more words in the same root family. `imithi` (plural) and
+  `uthando` (love) are unaffected.
+- **`imini`** ("day") started splitting as `imi`+`ni` instead of
+  `i`+`mini`, not from a vowel-gating gap but from `NOUN_ROOT_LEXICON`
+  simply growing large enough that `imi` (a completely ordinary,
+  unconditional class 4 prefix) now has a coincidental lexicon hit
+  (`ni`, bulk-imported as "gender") beating the correct, shorter-prefix
+  reading in the longest-match-first search.
+- **`kubuxoki`** ("in lies/falsehood") is the one genuinely uncertain
+  call — verb-slot resolves it as `ku-`+`bu-`(object)+`xok-`("lie")+`i`,
+  which is plausible but likely isn't the intended locative-noun
+  reading (`ku-` "in" + the whole noun `buxoki`, the same "locative on
+  an already-prefixed noun" pattern lute-shona's `mumunda` exercises,
+  not currently modeled here as a 3-layer strip). Included as an
+  exception on the "don't guess" principle, but flagged as lower-
+  confidence than the others — worth a fluent-speaker check.
+
+All six fixed via `WORD_EXCEPTIONS` (or, for `ubhuti`, an actual engine
+fix), not by reverting any part of the bulk import — the coverage win
+is worth the handful of collisions it surfaced, and finding them here
+means they're documented and protected rather than silently wrong in
+front of a reader. **The general lesson for any future lexicon
+expansion, in either language**: re-run the existing real-text
+validation corpus after growing a lexicon, don't just check that
+existing unit tests still pass — unit tests only cover words already
+known to matter, and a bigger lexicon's new collisions show up
+precisely on words that weren't being tested before.
+
+**Post-import re-validation**: both stories were re-run through the
+fixed engine after all six collisions above were resolved. "Ingonyama
+nenkawu" went from 7/338 to 56/338 words splitting; "Indoda
+engenakhaya" (the second, previously-untested story) went from 4/202
+to 34/202. No further un-investigated regressions found in the
+spot-check pass. Coverage is still far from complete — most nouns and
+verbs in ordinary text are still outside both lexicons — but the
+order-of-magnitude jump confirms the bulk-import approach is the right
+lever, not just a one-off fix.
+
 ## Known gaps, not guessed at
 
 - **Verbal extensions** (causative/applicative/passive/reciprocal) —
-  not yet located in Oosthuysen. The general CARP ordering principle
+  not yet located in Oosthuysen, and isixhosa.click's `words.csv` does
+  not encode them either (its verb entries are bare unstacked roots).
+  The general CARP ordering principle
   (Causative→Applicative→Reciprocal→Passive) is very likely to hold,
   being Nguni/Bantu-wide, but the exact isiXhosa surface forms need
   their own source before going in `VERB_EXTENSIONS` — do not assume
@@ -216,10 +365,18 @@ collide with a real word; fix the specific collision, keep the prefix.
   `inkqekezo` (from `-qhekeza`) surfaces with a mutated root
   (`nkqekez-`, not `qhekez-`), the same unmodeled-mutation category as
   Shona's class 5. Not seeded; falls back safely to whole-word.
-- **`NOUN_ROOT_LEXICON` is small and citation-example-driven**, same
-  caveat as Shona's — most isiXhosa nouns outside the seed won't split
-  yet. Grow from real text, not more reference-grammar mining in the
-  abstract, per lute-shona DESIGN.md section 9's calibration finding.
+- **Hyphenated loanwords** (e.g. `i-orenji`, "orange") — the hyphen is
+  a real orthographic prefix boundary the engine doesn't parse; excluded
+  from the bulk import rather than forced through the plain-prefix
+  logic (see above). Falls back safely to whole-word.
+- **`NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` are no longer tiny** —
+  695 noun roots and 405 verb roots after the isixhosa.click bulk
+  import (up from ~30/~9), but still far short of full coverage for
+  ordinary running text. Keep growing from real reading text and
+  further verified bulk sources, not more reference-grammar mining in
+  the abstract, per lute-shona DESIGN.md section 9's calibration
+  finding — and re-run the real-text validation corpus (above) every
+  time, since a bigger lexicon reliably surfaces new collisions.
 
 ## Forking notes for whoever builds the next one
 

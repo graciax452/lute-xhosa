@@ -34,8 +34,7 @@ def test_noun_classes_singular_plural_pairs():
     # cl.3/4 (um-/imi-)
     check("umvubu", ["um", "vubu"])  # hippo
     check("imivubu", ["imi", "vubu"])  # hippos
-    check("umthi", ["um", "thi"])  # tree
-    check("imithi", ["imi", "thi"])  # trees
+    check("imithi", ["imi", "thi"])  # trees ("umthi" singular is a WORD_EXCEPTIONS collision, see test_verb_noun_branch_collision_exceptions)
     # cl.5/6 (ili-/ama-)
     check("ilifu", ["ili", "fu"])  # cloud
     check("amafu", ["ama", "fu"])  # clouds
@@ -50,8 +49,8 @@ def test_noun_classes_singular_plural_pairs():
     check("iintombi", ["ii", "ntombi"])  # girls (singular "intombi" covered below)
     check("intombi", ["i", "ntombi"])  # girl
     check("indlela", ["i", "ndlela"])  # path/road/way
-    # cl.11 (ulu-/u-)
-    check("uluthi", ["ulu", "thi"])  # stick -- shares root "thi" with umthi/imithi (tree)
+    # cl.11 (ulu-/u-) -- "uluthi" (stick) is a WORD_EXCEPTIONS collision,
+    # see test_verb_noun_branch_collision_exceptions
     check("uthando", ["u", "thando"])  # love
 
 
@@ -67,10 +66,9 @@ def test_derivational_noun_examples():
     # Same verb root (-qhekeza "break in/off", -phula "break") forming
     # different nouns across classes -- source: furman.edu/Oxford
     # dictionary. Consonant-mutated forms (e.g. class 9 "inkqekezo")
-    # deliberately not seeded -- see rules.py.
-    check("umqhekezi", ["um", "qhekezi"])  # burglar (cl.1)
+    # deliberately not seeded -- see rules.py. "umqhekezi"/"isiqhekezi"
+    # are WORD_EXCEPTIONS collisions (see test_verb_noun_branch_collision_exceptions).
     check("umqhekezo", ["um", "qhekezo"])  # event of breaking off (cl.3)
-    check("isiqhekezi", ["isi", "qhekezi"])  # expert breaker (cl.7)
     check("uqhekezo", ["u", "qhekezo"])  # state of breaking (cl.11)
     check("umphuli", ["um", "phuli"])  # person who breaks things (cl.1)
     check("umphulo", ["um", "phulo"])  # event/manner of breaking (cl.3)
@@ -134,6 +132,24 @@ def test_real_story_collisions():
     check("Kudala", ["Kudala"])  # "long ago" -- NOT ku(cl.15/17 concord)+dal(create)+a
     check("kudala", ["kudala"])
     check("uthi", ["uthi"])  # "you say" -- NOT u(augment)+thi(seeded noun root "tree/stick")
+
+
+def test_verb_noun_branch_collision_exceptions():
+    # Collisions surfaced immediately after the isixhosa.click bulk
+    # import (see rules.py/DESIGN.md for the exact mechanism of each) --
+    # both from newly-added verb roots colliding with existing noun
+    # roots on words ending in a valid terminal vowel.
+    check("umqhekezi", ["umqhekezi"])  # burglar (cl.1) -- NOT u+m+qhekez(break)+i
+    check("isiqhekezi", ["isiqhekezi"])  # expert breaker (cl.7) -- NOT i+si+qhekez(break)+i
+    check("umthi", ["umthi"])  # tree (cl.3) -- NOT u+m+th(say)+i
+    check("uluthi", ["uluthi"])  # stick (cl.11) -- NOT u+lu+th(say)+i
+    check("imini", ["imini"])  # day -- NOT imi(cl.4, legitimate but wrong here)+ni("gender")
+    check("kubuxoki", ["kubuxoki"])  # in lies/falsehood -- lower-confidence judgment call, see rules.py
+    # Same derivational/root families, but NOT exceptions -- these
+    # correctly resolve on their own since they don't end in a valid
+    # terminal vowel (verb-slot's stem resolver requires one):
+    check("uqhekezo", ["u", "qhekezo"])
+    check("imithi", ["imi", "thi"])
 
 
 def test_empty_and_minimal_input():

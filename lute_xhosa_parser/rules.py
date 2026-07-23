@@ -70,9 +70,52 @@ PROPER_NOUNS = set()
 #     say, '...'"). A true homonym -- "thi" isn't even seeded as a verb
 #     root, so only the wrong noun reading could ever fire; same
 #     category as lute-shona's "kamba" (tortoise vs. small house).
+# Two more found immediately after the isixhosa.click bulk import (see
+# DESIGN.md): "umqhekezi" ("burglar", cl.1) and "isiqhekezi" ("expert
+# breaker", cl.7) both end in the valid terminal vowel -i, and the bulk
+# import happened to add "qhekez" as a verb root (from the bulk-imported
+# verb "-qhekeza", "break in/off") -- so verb-slot now wrongly resolves
+# them as subject+object+"qhekez"(root)+i, e.g. u-(you)+m-(him)+qhekez-
+# (break)+i = "you break him", instead of the correct noun reading.
+# Note "uqhekezo" (cl.11, same derivational family) does NOT need an
+# exception -- it ends in -o, not a valid terminal vowel, so verb-slot
+# already fails safely on its own.
+# The bulk import also added "th" (bare root of "-thi", "say") as a
+# verb root -- systemically colliding with the same "thi" (tree/stick)
+# noun root that already caused the "uthi" exception above, now also
+# breaking "umthi" ("tree": u-+m-(object)+th-+i = "you say it") and
+# "uluthi" ("stick": u-+lu-(object)+th-+i = "you [cl.11 obj] say").
+# "imithi" (trees, plural) and "uthando" (love) are unaffected --
+# neither produces a subject+object+"th"+valid-TV combination.
+#
+# "imini" ("day") is a different flavor of the same underlying issue:
+# not a vowel-gating gap, just the noun branch's longest-match-first
+# search finding "imi" (a perfectly legitimate, unconditional class 4
+# prefix) before the shorter "i", and "imi"+"ni" ("ni" bulk-imported as
+# "gender") happens to also be a valid lexicon hit -- so it wins over
+# the correct "i"+"mini" reading purely by being checked first. Found
+# running "Ingonyama nenkawu" through the updated engine.
+#
+# "kubuxoki" ("in lies/falsehood", from "ungakholelwa kubuxoki" -- "you
+# shouldn't believe in lies") is a genuine judgment call, not a
+# confirmed error: verb-slot resolves it as ku-(subject)+bu-(cl.14
+# object)+xok-(root "lie", bulk-imported)+i, which is plausible on its
+# own terms but likely isn't the intended locative-noun reading (ku-
+# "in" + the whole noun "buxoki", parallel to lute-shona's "whole noun
+# as stem" locative pattern -- not currently modeled here, would need
+# a 3-layer locative+class-prefix+root strip). Included as an exception
+# because the alternative (a specific verb-shaped guess) risks being
+# actively wrong, but flagged here as lower-confidence than the others
+# -- worth a fluent-speaker check.
 WORD_EXCEPTIONS = {
     "kudala",
     "uthi",
+    "umqhekezi",
+    "isiqhekezi",
+    "umthi",
+    "uluthi",
+    "imini",
+    "kubuxoki",
 }
 
 # Confirmed past-tense ("a-past") subject-concord fusions, matched the
@@ -108,7 +151,7 @@ NOUN_CLASS_PREFIXES = [
     ("m", "1"),         # augment-dropped variant
     ("u", "1a"),        # cl.1a has no separate class prefix, augment only
     ("aba", "2"),       # augmented, e.g. abantu
-    ("ab", "2"),        # augmented before vowel-initial stem
+    ("ab", "2"),        # augmented before vowel-initial stem -- see NOUN_PREFIXES_REQUIRE_VOWEL_STEM below
     ("ba", "2"),        # augment-dropped variant
     ("oo", "2a"),       # fused augment+prefix, e.g. oobhuti
     ("imi", "4"),       # augmented, e.g. imivubu
@@ -143,6 +186,21 @@ NOUN_CLASS_PREFIXES = [
     ("pha", "16"),      # locative, no augment
     ("mu", "18"),       # locative, no augment
 ]
+
+# The "before vowel-initial stem" allomorphs above (ab-, am-, is-, iz-,
+# ub-) are only real prefixes when the stem itself starts with a vowel
+# -- morphology.py enforces this explicitly for these five, since
+# without it a word like "ubhuti" ("brother") can wrongly match "ub-"
+# (leaving stem "huti", a real root once bulk vocabulary was added)
+# instead of "u-" (leaving stem "bhuti", the correct root) purely
+# because "ub-" is longer and the longest-match-first search tries it
+# first. Found via a real regression after the isixhosa.click bulk
+# import (see DESIGN.md) -- harmless when the lexicon was small, since
+# there was rarely a lexicon hit for the wrong reading to false-fire
+# on, but a real risk once the lexicon got big enough for coincidental
+# hits to become likely.
+NOUN_PREFIXES_REQUIRE_VOWEL_STEM = {"ab", "am", "is", "iz", "ub"}
+VOWELS = set("aeiou")
 
 # Noun roots, gated the same way as lute-shona's: the full remainder
 # after a candidate prefix strip must exactly match an entry here.
@@ -180,6 +238,696 @@ NOUN_ROOT_LEXICON = {
     "hle",       # ubuhle (beauty)
     "si",        # ubusi (honey) -- NOTE short root, collision-prone, see DESIGN.md
     "suku",      # ubusuku (night)
+    # From "Indoda engenakhaya" (The Homeless Man) -- second real-text
+    # validation story. Extracted by applying the already-confirmed
+    # noun-class prefix inventory (not new grammar), so lower-risk than
+    # the grammar-rule "don't guess" cases -- but still just one
+    # non-fluent pass, worth a fluent-speaker check eventually.
+    "ndoda",     # indoda (man/husband, cl.9)
+    "ngxowa",    # ingxowa (bag/sack, cl.9)
+    "rhwebi",    # umrhwebi (trader/merchant, cl.1) -- agentive "-i" pattern, same as qhekezi/phuli
+    "ngqekembe", # ingqekembe, iingqekembe (gold coin/coins, cl.9/10)
+
+    # --- Bulk import from isixhosa.click (words.csv), CC BY-SA 4.0 ---
+    # https://github.com/IsiXhosa-click/database -- a UCT/SADiLaR-backed
+    # open dictionary project, 2336 entries total. Extracted by matching
+    # each entry's stated noun_class against the confirmed
+    # NOUN_CLASS_PREFIXES table above and stripping the prefix -- same
+    # low-risk extraction method used for the earlier hand-picked
+    # entries, just automated at scale. Multi-word phrases, proper
+    # nouns, and hyphenated loanwords (e.g. i-orenji) were excluded (see
+    # lute-xhosa DESIGN.md). This is machine-extracted, not individually
+    # hand-verified line by line the way the Oosthuysen-sourced entries
+    # above are -- worth a fluent-speaker spot-check eventually. Some
+    # entries are short (2-3 letters) and therefore more collision-prone
+    # -- same category as the hand-picked short roots elsewhere in this
+    # file, protected the same way (exact-remainder-match gating).
+    "abonakude",  # television
+    "ahluko",  # difference
+    "akazi",  # maternal aunt
+    "akhelo",  # matrix
+    "akhiwo",  # building
+    "alume",  # maternal uncle
+    "ama",  # mother
+    "ambo",  # rib
+    "andi",  # sound
+    "andla",  # hand
+    "andlalo",  # bed
+    "ango",  # entrance
+    "angqa",  # circle
+    "anyano",  # union
+    "avereji",  # mean
+    "awo",  # father
+    "aziso",  # identity
+    "bakala",  # grade
+    "bala",  # colour
+    "bali",  # story
+    "bane",  # electricity
+    "banga",  # grade
+    "banjwa",  # prisoner
+    "befu",  # asthma
+    "bele",  # breast
+    "beleko",  # vagina
+    "bethe",  # dew
+    "bhabhatane",  # butterfly
+    "bhali",  # writer
+    "bhanxa",  # fool
+    "bhasi",  # buses
+    "bhaxu",  # patch
+    "bhayisekile",  # bicycles
+    "bhedi",  # bed
+    "bhedlele",  # hospital
+    "bhegi",  # bag
+    "bhengezo",  # advertisement
+    "bheno",  # appeal
+    "bhere",  # bear
+    "bheyile",  # bail
+    "bhodi",  # boards
+    "bhola",  # balls
+    "bhontsi",  # big toes
+    "bhotile",  # bottle
+    "bhulu",  # Afrikaans
+    "bhuthi",  # brothers
+    "bilo",  # sweat
+    "bindi",  # centre
+    "bini",  # second
+    "bono",  # idea
+    "bumbelo",  # matrix
+    "bunzi",  # forehead
+    "cala",  # section
+    "candelo",  # department
+    "cango",  # door
+    "caphaza",  # dot
+    "catshulwa",  # extract
+    "cawe",  # churches
+    "cephe",  # spoon
+    "chako",  # material
+    "chaneka",  # accuracy
+    "chapaza",  # dots
+    "chaphaza",  # spot
+    "chaphuchaphu",  # nausea
+    "chiza",  # chemical
+    "cici",  # earring
+    "cikicane",  # baby toe
+    "ciko",  # lid
+    "cingo",  # wire
+    "copho",  # brain
+    "culo",  # music
+    "dabi",  # battle
+    "dadebawo",  # paternal aunt
+    "daka",  # mud
+    "dakada",  # spleen
+    "dali",  # darling
+    "dalwa",  # creature
+    "dibaniso",  # addition
+    "didi",  # class
+    "dla",  # interest
+    "dladla",  # home
+    "dlala",  # gland
+    "dlali",  # actor
+    "dlalo",  # game
+    "dlele",  # cheek
+    "dlelwane",  # friendship
+    "dliwo",  # fine
+    "dlo",  # meal
+    "doda",  # men
+    "dolo",  # knee
+    "dolophu",  # town
+    "donga",  # wall
+    "dudu",  # porridge
+    "dumbu",  # corpse
+    "dyasi",  # condom
+    "dywantsi",  # hip
+    "ebe",  # branch
+    "efundisi",  # pastors
+    "ehlandenyuka",  # ups and downs
+    "ehlo",  # eyes
+    "emere",  # bucket
+    "endu",  # speed
+    "enzi",  # verb
+    "eti",  # set
+    "eva",  # thorns
+    "eyilotayiphi",  # sellotape
+    "eyitroni",  # matron
+    "fama",  # farmer
+    "fanekiso",  # picture
+    "fazi",  # wife
+    "fektha",  # factor
+    "fele",  # skin
+    "festile",  # windows
+    "fiva",  # fever
+    "flu",  # flu
+    "fo",  # guy
+    "folokhwe",  # forks
+    "formula",  # formulae
+    "fuba",  # chest
+    "fudo",  # tortoise
+    "fundi",  # student
+    "fundisi",  # pastor
+    "funo",  # vegetable
+    "futha",  # oil
+    "futhe",  # effect
+    "fuzo",  # genetics
+    "gaba",  # phase
+    "gadi",  # garden
+    "galelo",  # contribution
+    "gama",  # area
+    "ganeko",  # incident
+    "gangatho",  # floor
+    "garaji",  # garages
+    "gathara",  # gutters
+    "gazi",  # blood
+    "gca",  # line
+    "gcisa",  # art
+    "gebenga",  # crime
+    "gesi",  # x-rays
+    "gidi",  # million
+    "godi",  # mine
+    "goli",  # Johannesburg
+    "gongqongqo",  # dragon
+    "gonyo",  # vaccine
+    "gophe",  # curve
+    "gqabi",  # leaf
+    "gqala",  # veteran
+    "gqi",  # witchcraft
+    "gqibelo",  # Saturday
+    "gqili",  # Orange River
+    "gqirha",  # doctor
+    "gqomo",  # bin
+    "gqwirha",  # witchcraft
+    "gruzuko",  # bruise
+    "gubo",  # flour
+    "gulana",  # patient
+    "gulo",  # illness
+    "gumbi",  # room
+    "gusha",  # sheep
+    "gxa",  # shoulder
+    "gxalaba",  # shoulder
+    "hambo",  # journey or trip
+    "hashe",  # car
+    "hayihayi",  # high blood pressure
+    "heke",  # gates
+    "helikhopta",  # helicopters
+    "hempe",  # shirt
+    "hiya",  # eyebrow
+    "hla",  # date
+    "hlaba",  # earth
+    "hlabathi",  # world
+    "hlahla",  # wrist
+    "hlana",  # back
+    "hlangu",  # shoe
+    "hlathi",  # forest
+    "hlawuliso",  # fine
+    "hlaza",  # cancer
+    "hlekazi",  # mister
+    "hlengisi",  # dolphin
+    "hleza",  # hip bone
+    "hlungu",  # pain
+    "hlunu",  # muscle
+    "hlwele",  # crowd
+    "hlwempu",  # poverty
+    "hombiso",  # decoration
+    "hontsi",  # big toe
+    "huti",  # brother
+    "isi",  # milk
+    "joni",  # soldier
+    "kama",  # combs
+    "kamva",  # future
+    "kapa",  # Cape Town
+    "kati",  # cats
+    "kere",  # pair of scissors
+    "khabathi",  # cupboards
+    "khadi",  # card
+    "khadibhodi",  # cardboard
+    "khalazo",  # complaint
+    "khaya",  # home
+    "khefu",  # interval
+    "khenkce",  # ice
+    "khephe",  # ship
+    "khephu",  # snow
+    "khethe",  # prejudice
+    "khetshi",  # cable car
+    "khitshana",  # boat
+    "khohlela",  # phlegm
+    "khohlokhohlo",  # cough
+    "khompyutha",  # computers
+    "khondo",  # trunk
+    "khonkco",  # link
+    "khova",  # owl
+    "khuhlane",  # cold
+    "khula",  # weeds
+    "khulu",  # hundred
+    "khuluwa",  # elder brother
+    "khumba",  # skin
+    "khumbi",  # dock
+    "khuni",  # pee stick
+    "khwele",  # envy
+    "khweli",  # passenger
+    "khwenkwe",  # boys
+    "klasi",  # classes
+    "ko",  # fireplace
+    "kofu",  # coffee
+    "komityi",  # cups
+    "krebe",  # shark
+    "krelemnqa",  # perpetrator
+    "kwindla",  # autumn
+    "lambo",  # river
+    "langa",  # sun
+    "layi",  # slice
+    "lebe",  # lip
+    "lenge",  # crane
+    "lenze",  # leg
+    "levu",  # chin
+    "lilo",  # fire
+    "limi",  # farmer
+    "linganiso",  # measure
+    "lingo",  # magic
+    "lingwa",  # subject
+    "lo",  # beast
+    "logaridhimu",  # Logarithm
+    "lokhwe",  # dresses
+    "loliwe",  # train
+    "lomo",  # mouth
+    "lovane",  # chameleon
+    "loyiko",  # fear
+    "lungelelanisi",  # coordinate
+    "lungiselelo",  # preparations
+    "lungu",  # member
+    "lwalamano",  # Proportion
+    "lwandle",  # beach
+    "lwanyana",  # animal
+    "lwesibini",  # Tuesday
+    "lwesihlanu",  # Friday
+    "lwesine",  # Thursday
+    "lwesithathu",  # Wednesday
+    "lwimi",  # languages
+    "makazi",  # maternal aunts
+    "mali",  # money
+    "malume",  # maternal uncles
+    "mama",  # mothers
+    "mandla",  # regions
+    "mangalelwa",  # accused
+    "mangali",  # plaintiff
+    "mbalela",  # drought
+    "mbali",  # history
+    "mbambo",  # ribs
+    "mbangi",  # causes
+    "mbewu",  # seeds
+    "mbila",  # dassies
+    "mbotyi",  # beans
+    "mbuso",  # faces
+    "meko",  # situations
+    "mela",  # knives
+    "melabizo",  # pronoun
+    "meli",  # representatives
+    "memo",  # invitation
+    "menemene",  # deceit
+    "meyitroni",  # matrons
+    "mfazwe",  # war
+    "mfene",  # Baboons
+    "mfeyesele",  # moss
+    "mfihlo",  # secret
+    "mfudo",  # tortoises
+    "mfundo",  # education
+    "milo",  # character
+    "mini",  # days
+    "miselo",  # terms
+    "mntwiso",  # personification
+    "mo",  # condition
+    "mongikazi",  # nurses
+    "moto",  # cars
+    "mpahla",  # clothes
+    "mpawu",  # symptoms
+    "mpazamo",  # mistakes
+    "mpelaveki",  # weekends
+    "mpendulo",  # answers
+    "mpikiswano",  # contradiction
+    "mpilo",  # health
+    "mpindo",  # river bends
+    "mpondo",  # horns
+    "mpuku",  # mice
+    "mpumlo",  # noses
+    "mpundu",  # buttocks
+    "mvavanyo",  # exams
+    "mviwo",  # exams
+    "mvo",  # opinions
+    "mvubu",  # hippos
+    "mvula",  # rain
+    "mvume",  # permission
+    "nakwethu",  # brother
+    "naliti",  # needles
+    "nambuzane",  # bug
+    "ncam",  # point
+    "ncasa",  # flavour
+    "ncedo",  # help
+    "ncili",  # excitement
+    "ncoko",  # conversation
+    "ncopho",  # peak
+    "ncwadi",  # books
+    "ndaba",  # news
+    "ndalo",  # nature
+    "ndawo",  # places
+    "ndebe",  # trophy
+    "ndidi",  # types
+    "ndilili",  # average
+    "ndima",  # role
+    "ndindisholo",  # numbness
+    "ndla",  # energy
+    "ndlala",  # famine
+    "ndlebe",  # ears
+    "ndleko",  # expenses
+    "ndlovu",  # elephants
+    "ndlu",  # houses
+    "ndlulamthi",  # giraffes
+    "ndonga",  # walls
+    "nenekazi",  # lady
+    "ngalingani",  # inequality
+    "ngalo",  # arms
+    "ngca",  # grass
+    "ngcali",  # experts
+    "ngcangcazelomhlaba",  # shock wave
+    "ngcango",  # doors
+    "ngcingo",  # wires
+    "ngesi",  # English
+    "ngingqi",  # area
+    "ngoma",  # song
+    "ngomeleli",  # weakness
+    "ngono",  # nipples
+    "ngqele",  # cold
+    "ngqina",  # evidence
+    "ngqiniba",  # elbows
+    "ngqondo",  # brain
+    "ngqusho",  # samp
+    "ngqwalaselo",  # Observations
+    "ngubo",  # blanket
+    "ngwenya",  # crocodile
+    "ngxaki",  # problems
+    "ngxangxasi",  # waterfalls
+    "ngxelo",  # reports
+    "ngxinano",  # traffic
+    "ngxolo",  # noise
+    "ngxuma",  # hole
+    "ngxunguphalo",  # suffering
+    "ngxungxo",  # part-time job
+    "ni",  # gender
+    "ninawa",  # younger brother
+    "ninzi",  # plural
+    "nja",  # dogs
+    "njeke",  # pancreases
+    "njikalanga",  # evening
+    "njongosenzi",  # object
+    "nkaba",  # navels
+    "nkathazo",  # problem
+    "nkcubeko",  # culture
+    "nkcukacha",  # detail
+    "nkolo",  # religion
+    "nkomo",  # cows
+    "nkonxa",  # tin can
+    "nkonyana",  # calves
+    "nkonzo",  # services
+    "nkosazana",  # princess
+    "nkosi",  # chief
+    "nkqubo",  # procedures
+    "nkuku",  # chickens
+    "nkulungwane",  # centuries
+    "nkumba",  # snails
+    "nkumbulo",  # memory
+    "nkundla",  # courts
+    "nkuthazo",  # encouragement
+    "nkwenkwe",  # boy
+    "nobangela",  # cause
+    "nokrwece",  # seashells
+    "nomathotholo",  # radio
+    "nombombiya",  # penguin
+    "nomeva",  # wasp
+    "nontlalontle",  # social worker
+    "nopopi",  # doll
+    "nqa",  # hip
+    "nqaba",  # castles
+    "nqaku",  # point
+    "nqanawe",  # ships
+    "nqe",  # waist
+    "nqindi",  # fist
+    "nqongophala",  # shortage
+    "nqulo",  # religion
+    "nqununu",  # principals
+    "nqwazi",  # hat
+    "nqwelo",  # wagons
+    "nqwelomoya",  # aeroplanes
+    "ntaba",  # mountains
+    "ntabamkhenkce",  # glaciers
+    "ntabamlilo",  # volcanoes
+    "ntaka",  # birds
+    "ntamo",  # necks
+    "ntatheli",  # journalism
+    "ntende",  # palms
+    "ntengiso",  # advertisements
+    "ntlakohlaza",  # spring
+    "ntlambo",  # valley
+    "ntlango",  # desert
+    "ntlanzi",  # fish
+    "ntlekele",  # disasters
+    "ntliziyo",  # hearts
+    "ntlobo",  # kinds
+    "ntlobontlobo",  # many types
+    "ntloko",  # heads
+    "ntlonipho",  # respect
+    "ntlugu",  # pains
+    "nto",  # things
+    "ntolongo",  # jails
+    "ntsana",  # babies
+    "ntsapho",  # families
+    "ntsasa",  # morning
+    "ntsholongwane",  # germs
+    "ntsiba",  # feathers
+    "ntsimbi",  # beads
+    "ntsimi",  # field
+    "ntsini",  # laughter
+    "ntso",  # kidneys
+    "ntsuku",  # days
+    "ntsusa",  # origin
+    "ntwana",  # child
+    "ntwasahlobo",  # spring
+    "ntyatyambo",  # flowers
+    "numzana",  # mister
+    "nwe",  # finger
+    "nwele",  # hairs
+    "nxaninzi",  # polygon
+    "nxeba",  # phone
+    "nxila",  # drunkard
+    "nxulumano",  # association
+    "nxweme",  # coast
+    "nyaka",  # year
+    "nyama",  # rainbow
+    "nyana",  # son
+    "nyanga",  # months
+    "nyango",  # treatments
+    "nyaniso",  # truth
+    "nyanya",  # ancestors
+    "nyawo",  # feet
+    "nyembezi",  # tears
+    "nyi",  # bladder
+    "nyo",  # tooth
+    "nyoka",  # snakes
+    "nyosi",  # bees
+    "nyumereyitha",  # numerator
+    "nzi",  # water
+    "nzima",  # weight
+    "nzipho",  # nails
+    "nzulu",  # volume
+    "nzuzo",  # profit
+    "nzwane",  # toes
+    "olo",  # yesterday
+    "omi",  # life
+    "ona",  # jealousy
+    "ongameli",  # archbishop
+    "ongezo",  # additive
+    "ongikazi",  # nurse
+    "ongo",  # nosebleed
+    "onka",  # bread
+    "ono",  # sin
+    "oya",  # fur
+    "parabola",  # parabola
+    "paseji",  # passages
+    "pati",  # parties
+    "payina",  # pineapple
+    "peni",  # pens
+    "phahla",  # roof
+    "phambili",  # penis
+    "phambuka",  # intersection
+    "phando",  # survey
+    "phangi",  # mugger
+    "phantsi",  # vagina
+    "phawu",  # symptom
+    "phika",  # shortness of breath
+    "phiko",  # wing
+    "pho",  # gift
+    "pholigoni",  # polygon
+    "phondo",  # horn
+    "phumo",  # result
+    "phunga",  # lung
+    "phupha",  # dream
+    "pilisi",  # pills
+    "pinatshi",  # spinach
+    "planga",  # plank
+    "poyinti",  # point
+    "qabane",  # comrade
+    "qala",  # first
+    "qalo",  # beginning
+    "qamelo",  # pillow
+    "qanda",  # egg
+    "qatha",  # ankle
+    "qathango",  # conditions
+    "qela",  # group
+    "qeshi",  # employer
+    "qhamo",  # fruit
+    "qhaqho",  # operations
+    "qhelo",  # habit
+    "qhinga",  # trick
+    "qhoqhoqho",  # windpipe
+    "qhuphe",  # short while
+    "qina",  # fossil
+    "qokobhe",  # shell
+    "qolo",  # back
+    "quluba",  # calf
+    "qunube",  # wild berry
+    "qwilikane",  # mumps
+    "rayisi",  # rice
+    "rediyo",  # radio
+    "rhali",  # thread
+    "rhamncwa",  # monster
+    "rhawuti",  # Johannesburg
+    "rhorho",  # pelvis
+    "rhulumente",  # government
+    "rhwaphilizo",  # corruption
+    "rumathizima",  # rheumatism
+    "sana",  # baby
+    "sango",  # entrances
+    "sapho",  # family
+    "sebe",  # eyelash
+    "sebenzi",  # employee
+    "sekelo",  # base
+    "sele",  # cell
+    "shiya",  # eyebrows
+    "shushu",  # temperature
+    "siba",  # feather
+    "sibali",  # brother-in-law
+    "sika",  # winter
+    "sila",  # tail
+    "simi",  # farm
+    "sindo",  # anger
+    "sipha",  # ligament
+    "sisi",  # sister
+    "so",  # face
+    "sompempe",  # referee
+    "sondeza",  # approximation
+    "su",  # intestine
+    "suleleko",  # infection
+    "sundululu",  # worm
+    "tafile",  # tables
+    "tapile",  # potatoes
+    "tatomncinci",  # paternal uncles
+    "tatomncini",  # paternal uncle
+    "tena",  # brick
+    "tephu",  # step
+    "tha",  # ray of light
+    "thabazi",  # expanse of water
+    "thako",  # ingredient
+    "thambo",  # bone
+    "thamo",  # volume
+    "thandazo",  # prayer
+    "thandwa",  # beloved
+    "thanga",  # pumpkin
+    "thatha",  # nostril
+    "thathaka",  # weakness
+    "thathaki",  # witchcraft
+    "theko",  # party
+    "themba",  # hope
+    "thende",  # heel
+    "thetho",  # rule
+    "thili",  # district
+    "thombo",  # fountain
+    "thondo",  # penis
+    "thongo",  # sleep
+    "thuba",  # chance
+    "thumbu",  # intestine
+    "thunzi",  # shade
+    "thuthi",  # vehicle
+    "thuthu",  # ashes
+    "thuthuthu",  # motorbike
+    "titshala",  # teacher
+    "tiya",  # garden
+    "tofu",  # injection
+    "tshati",  # charts
+    "tshato",  # marriage
+    "tshayelo",  # broom
+    "tshintshatshintsha",  # Variation
+    "tshisa",  # heartburn
+    "tshixo",  # key
+    "tshomi",  # friend
+    "tulo",  # chair
+    "tumato",  # tomatoes
+    "tv",  # TV
+    "tya",  # food
+    "tyala",  # case
+    "tyalo",  # plant
+    "tye",  # stone
+    "tyholo",  # charge
+    "tywala",  # alcohol
+    "va",  # experience
+    "vatala",  # watermelons
+    "vavanyo",  # exam
+    "veki",  # weeks
+    "veni",  # van
+    "venkile",  # shops
+    "vila",  # laziness
+    "virasi",  # viruses
+    "vivingane",  # moth
+    "viwo",  # exam
+    "vo",  # opinion
+    "vulindlela",  # pioneer
+    "vulo",  # Monday
+    "vumba",  # smell
+    "vumelanisi",  # concord
+    "vundla",  # rabbit
+    "wele",  # twin
+    "wikhi",  # weakness
+    "wodi",  # ward
+    "wotshi",  # clocks
+    "xabiso",  # price
+    "xeko",  # city
+    "xesha",  # time
+    "xhala",  # anxiety
+    "xhego",  # old man
+    "xhegokazi",  # old woman
+    "xhobo",  # tool
+    "xhongo",  # shin
+    "xhosa",  # Xhosa
+    "xoki",  # falsehood
+    "xolo",  # peace
+    "xube",  # mixture
+    "yeni",  # husband
+    "yeza",  # medicine
+    "yezi",  # dizziness
+    "yobisi",  # drug
+    "yonke",  # sum
+    "yunivesithi",  # universities
+    "yure",  # hours
+    "za",  # wave
+    "zali",  # parent
+    "zekelo",  # example
+    "zi",  # homestead
+    "ziko",  # fireplaces
+    "zimba",  # body
+    "zimela",  # independence
+    "zinyo",  # teeth
+    "zipho",  # nail
+    "zulu",  # Zulu
+    "zuzu",  # minute
+    "zuzwana",  # second
+    "zwane",  # toe
+    "zwe",  # country
+    "zwi",  # voice
 }
 
 # Closed set of word-initial verbal subject concords. Source:
@@ -269,6 +1017,410 @@ VERB_ROOT_LEXICON = {
     "bon",     # ukubona - see (asikaziboni)
     "dal",     # ukudala - create (wadala)
     "theng",   # ukuthenga - buy (bathengile)
+    "bal",     # ukubala - count, from "Indoda engenakhaya" story (ukubala, "the counting")
+
+    # --- Bulk import from isixhosa.click (words.csv), CC BY-SA 4.0 ---
+    # Same source/methodology as the noun bulk import above -- see
+    # NOUN_ROOT_LEXICON's header comment and lute-xhosa DESIGN.md for
+    # full provenance. Verb roots derived by stripping the final vowel
+    # from the CSV's already-bare (infinitive-marker-free) xhosa column,
+    # cross-checked against the infinitive column where present.
+    "balek",  # run
+    "balulek",  # be important
+    "bamb",  # catch
+    "band",  # be cold
+    "bang",  # claim
+    "bek",  # put
+    "bekelis",  # move
+    "beth",  # hit
+    "bethw",  # lose
+    "bhaf",  # bathe
+    "bhafis",  # wish happy birthday
+    "bhak",  # bake
+    "bhal",  # write
+    "bhalis",  # register
+    "bhatal",  # pay
+    "bhek",  # travel towards
+    "bhengez",  # advertise
+    "bhity",  # become thin
+    "bhiyoz",  # celebrate
+    "bhodl",  # burp
+    "bhomboloz",  # shout
+    "bhotis",  # greet
+    "bhubh",  # pass away
+    "bil",  # sweat
+    "bilis",  # boil
+    "biz",  # call
+    "bonis",  # show
+    "boph",  # bandage
+    "bukel",  # watch
+    "bulal",  # kill
+    "bulel",  # thank
+    "bulis",  # greet
+    "buy",  # return
+    "buyis",  # bring back
+    "buz",  # ask
+    "cacis",  # explain
+    "cand",  # chop
+    "caphuk",  # become irritated
+    "caphukis",  # irritate
+    "caphul",  # extract
+    "cebis",  # advise
+    "cel",  # ask politely
+    "cham",  # urinate
+    "chaphazel",  # affect
+    "chaz",  # describe
+    "cheb",  # cut
+    "chith",  # destroy
+    "chol",  # pick up
+    "cim",  # extinguish
+    "cimel",  # close eyes
+    "cinezel",  # press down on
+    "cing",  # think
+    "coc",  # clean
+    "cof",  # click
+    "cothis",  # slow down
+    "cul",  # sing
+    "cwangcis",  # plan
+    "dad",  # swim
+    "dan",  # become disappointed
+    "danis",  # dance
+    "dek",  # lay table
+    "diban",  # meet
+    "dibanis",  # add
+    "diliz",  # demolish
+    "ding",  # need
+    "dinw",  # become tired
+    "dlal",  # play
+    "dlul",  # pass
+    "dlulis",  # pass on
+    "dumb",  # swell up
+    "fak",  # put in
+    "fan",  # be like
+    "fanelek",  # become suitable
+    "fihl",  # hide
+    "fik",  # arrive
+    "fikelelek",  # be affordable
+    "fol",  # queue
+    "fudukel",  # move
+    "fudumal",  # become warm
+    "fuman",  # find
+    "fumanek",  # be achievable
+    "fun",  # look for
+    "fundis",  # teach
+    "funek",  # be necessary
+    "fung",  # take an oath
+    "gabh",  # vomit
+    "galel",  # add (an ingredient)
+    "gcin",  # keep
+    "gcwal",  # become full
+    "gcwalis",  # fill
+    "gez",  # be naughty
+    "gibisel",  # throw
+    "giny",  # swallow
+    "gob",  # bend over
+    "godol",  # be cold
+    "goduk",  # go home
+    "gony",  # vaccinate
+    "gqabhuk",  # burst
+    "gqib",  # decide
+    "gqibezel",  # complete
+    "gqith",  # pass
+    "grumb",  # dig
+    "gruzuk",  # bruise
+    "gug",  # become old
+    "gul",  # be sick
+    "guq",  # bend
+    "guquk",  # turn
+    "gwayimb",  # strike
+    "gweb",  # judge
+    "gxininis",  # emphasise
+    "hlab",  # inject
+    "hlafun",  # chew
+    "hlal",  # live
+    "hlaluty",  # analyse
+    "hlamb",  # wash
+    "hlasel",  # attack
+    "hlawul",  # pay
+    "hlek",  # laugh
+    "hlikihl",  # rub
+    "hlinz",  # operate
+    "hlis",  # lower
+    "hloniph",  # respect
+    "hlum",  # flourish
+    "hombis",  # decorate
+    "hoy",  # pay attention
+    "jik",  # turn
+    "jikelez",  # turn around
+    "jing",  # hang
+    "jol",  # date
+    "jong",  # look
+    "jov",  # inject
+    "jul",  # throw
+    "kam",  # comb
+    "kh",  # ever
+    "khab",  # kick
+    "khal",  # cry out
+    "khalaz",  # complain
+    "khalis",  # ring
+    "khamis",  # open mouth
+    "khangel",  # look for
+    "khaph",  # accompany
+    "khawulez",  # hurry
+    "khaziml",  # shine
+    "kheth",  # choose
+    "khohlakal",  # become cruel
+    "khohlel",  # cough
+    "kholelw",  # believe
+    "khomb",  # point
+    "khonkoth",  # bark
+    "khonz",  # serve
+    "khul",  # grow
+    "khulul",  # take off
+    "khumbul",  # miss
+    "khumbuz",  # remind
+    "khuph",  # take out
+    "khusel",  # protect
+    "khuthaz",  # encourage
+    "khwaz",  # shout
+    "khwel",  # get on
+    "krazuk",  # tear apart
+    "krob",  # peep
+    "krunek",  # become sprained
+    "krwemp",  # scratch
+    "kwelet",  # owe money
+    "lahl",  # dump
+    "lahlek",  # become lost
+    "lal",  # sleep
+    "lalan",  # have sex
+    "lamb",  # become hungry
+    "landel",  # follow
+    "lawul",  # control
+    "layit",  # light
+    "libal",  # forget
+    "lil",  # cry
+    "lind",  # wait
+    "lingan",  # be equal
+    "lob",  # fish
+    "lolong",  # exercise
+    "lum",  # bite
+    "lung",  # become OK
+    "lungis",  # fix
+    "lungiselel",  # prepare
+    "lw",  # fight
+    "mamel",  # listen
+    "manyanis",  # integrate
+    "mem",  # invite
+    "munc",  # suck
+    "ncamathisel",  # stick on
+    "nced",  # help
+    "nciphis",  # reduce
+    "ncokol",  # chat
+    "ncom",  # praise
+    "ncothul",  # weed
+    "ncum",  # smile
+    "ncwel",  # bully
+    "neth",  # rain
+    "ngcaml",  # taste
+    "ngcangcazel",  # shake
+    "ngcolis",  # make dirty
+    "ngongoz",  # beat
+    "ngqengq",  # lie down
+    "ngqish",  # stamp
+    "ngqong",  # crowd
+    "ngxam",  # become hurried
+    "ngxamisek",  # become urgent
+    "ngxol",  # make noise
+    "ngxolis",  # scold
+    "nik",  # give
+    "nikezel",  # submit
+    "nith",  # knit
+    "nkcenkceshel",  # water
+    "nqab",  # become scarce
+    "nqunq",  # chop
+    "nqwenelel",  # wish for
+    "ntlontlozel",  # stare
+    "ntshul",  # sprout
+    "nuk",  # smell
+    "nxib",  # wear
+    "nxil",  # become drunk
+    "nyamezel",  # persevere
+    "nyang",  # cure
+    "nyangek",  # get well
+    "nyuk",  # ascend
+    "nyus",  # lift
+    "pet",  # dig
+    "peyint",  # paint
+    "ph",  # give
+    "phak",  # serve
+    "phakam",  # stand up
+    "phakamis",  # lift
+    "phangel",  # be employed
+    "phath",  # afflict
+    "phathel",  # bring
+    "phawul",  # characterise
+    "phazam",  # make a mistake
+    "phefuml",  # breathe
+    "phek",  # cook
+    "phel",  # end
+    "phendul",  # answer
+    "phengulul",  # search
+    "phil",  # live
+    "phind",  # repeat
+    "phindaphind",  # Multiply
+    "phindez",  # exact revenge
+    "phol",  # cool down
+    "phosis",  # lie
+    "phox",  # disappoint
+    "phucuk",  # improve
+    "phucul",  # improve
+    "phulul",  # massage
+    "phum",  # come from
+    "phumelel",  # succeed
+    "phuml",  # rest
+    "phung",  # drink
+    "phuph",  # dream
+    "phuz",  # kiss
+    "pul",  # rinse
+    "qab",  # spread
+    "qal",  # start
+    "qaphel",  # notice
+    "qaqamb",  # ache
+    "qengqelek",  # rolling
+    "qhankqalaz",  # protest
+    "qhaqh",  # operate
+    "qhath",  # trick
+    "qhayis",  # boast
+    "qhekez",  # break into
+    "qhel",  # become used to
+    "qhub",  # drive
+    "qhubek",  # continue
+    "qhubekek",  # continue
+    "qhushek",  # tuck
+    "qhwab",  # clap
+    "qhwanyaz",  # blink
+    "qhwesh",  # escape
+    "qin",  # become strong
+    "qinisek",  # become sure
+    "qinisekis",  # determine
+    "qiq",  # Rationalise
+    "qokelel",  # collect
+    "qond",  # understand
+    "qumb",  # become angry
+    "rhalel",  # long for
+    "rhol",  # earn
+    "rhubuluz",  # crawl
+    "rhuq",  # drag
+    "s",  # take to
+    "sal",  # remain
+    "sandul",  # just
+    "sarh",  # saw
+    "sasaz",  # spread
+    "sebenzis",  # use
+    "sebez",  # whisper
+    "sel",  # drink
+    "shawut",  # shout
+    "shiy",  # leave
+    "shiyek",  # be left
+    "shukum",  # move
+    "shukumis",  # move
+    "shumayel",  # preach
+    "shush",  # drink heavily
+    "sik",  # cut
+    "sol",  # blame
+    "sondel",  # come closer
+    "song",  # fold
+    "suk",  # come from
+    "sul",  # wipe
+    "sus",  # remove
+    "swel",  # lack
+    "swelek",  # pass away
+    "th",  # say
+    "thabath",  # subtract
+    "thamb",  # become soft
+    "thand",  # like
+    "thandabuz",  # doubt
+    "thandaz",  # pray
+    "thath",  # take
+    "thelekel",  # compute
+    "thelekis",  # compare
+    "themb",  # hope
+    "thembis",  # promise
+    "thengis",  # sell
+    "theth",  # speak
+    "thiml",  # sneeze
+    "thob",  # lower
+    "thobel",  # obey
+    "thuk",  # swear
+    "thul",  # be quiet
+    "thum",  # send
+    "thung",  # sew
+    "thuthuzel",  # calm
+    "thwal",  # carry
+    "tof",  # inject
+    "tsal",  # pull
+    "tsalel",  # call
+    "tsh",  # burn
+    "tshabalalis",  # destroy
+    "tshat",  # marry
+    "tshay",  # smoke
+    "tshintsh",  # change
+    "tshis",  # burn
+    "tshitshiz",  # hiss
+    "tshix",  # lock
+    "tshon",  # set
+    "tsib",  # jump
+    "twez",  # stretch
+    "tyal",  # owe
+    "tyand",  # operate
+    "tyeb",  # become fat
+    "tyhutyh",  # spread
+    "v",  # feel
+    "val",  # close
+    "vamb",  # tattoo
+    "vel",  # come from
+    "velis",  # produce
+    "vuk",  # wake up
+    "vul",  # open
+    "vum",  # agree
+    "vumel",  # allow
+    "vuy",  # be happy
+    "w",  # fall
+    "wis",  # drop
+    "xaban",  # argue
+    "xabis",  # cost
+    "xelel",  # tell
+    "xhakamful",  # grab
+    "xhaphak",  # become common
+    "xhaphaz",  # abuse
+    "xhas",  # support
+    "xhents",  # dance
+    "xhokonx",  # provoke
+    "xhomekek",  # depend
+    "xhum",  # jump
+    "xilong",  # examine
+    "xobul",  # peel
+    "xok",  # lie
+    "xolel",  # forgive
+    "xonx",  # carve
+    "y",  # go to
+    "yal",  # advise
+    "yalel",  # command
+    "yek",  # give up
+    "yel",  # sink
+    "zal",  # become full
+    "zalis",  # fill
+    "zam",  # try
+    "zamis",  # stir
+    "zimel",  # be independent
+    "zimisel",  # intend
+    "zingel",  # hunt
+    "ziqhelis",  # practise
+    "zis",  # bring
+    "zithemb",  # be confident
+    "zob",  # draw
+    "zol",  # calm down
+    "zul",  # wander
 }
 
 # Terminal vowels. Never emitted as their own token -- see lute-shona

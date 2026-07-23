@@ -14,7 +14,7 @@ Same problem as Shona: isiXhosa is space-delimited (Lute's stock "Space Delimite
 
 Working noun-class splitting (all confirmed classes with singular/plural pairs, cross-class shared roots, derivational examples) and verb splitting (infinitives, present-tense `-ya-` infix, class-1 `a-past`). **Not yet implemented**: the `-ile` perfect suffix (structurally different from a prefix TAM marker — needs its own design pass), verbal extensions (causative/applicative/passive — not yet sourced), future tense (reportedly periphrastic, unconfirmed), and most persons' `a-past` forms beyond class 1. See `DESIGN.md` for the full list of what's confirmed vs. deferred, with page citations to the source grammar.
 
-Source: J.C. Oosthuysen, *The Grammar of isiXhosa* (SUN PRESS, 2016), extracted directly from the PDF (see `DESIGN.md` for how — it's a scanned-image book with no text layer).
+Sources: J.C. Oosthuysen, *The Grammar of isiXhosa* (SUN PRESS, 2016), extracted directly from the PDF (see `DESIGN.md` for how — it's a scanned-image book with no text layer), for the grammar itself; and [isixhosa.click](https://isixhosa.click) ([database repo](https://github.com/IsiXhosa-click/database), a UCT/SADiLaR-backed project, **licensed CC BY-SA 4.0**) for the bulk of `NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` (695 noun roots, 405 verb roots) — see `DESIGN.md` for the extraction method and the collisions it surfaced. Per CC BY-SA 4.0, any redistribution of this project's data must likewise credit isixhosa.click and remain share-alike.
 
 ## Install
 
