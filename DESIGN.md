@@ -364,6 +364,89 @@ verbs in ordinary text are still outside both lexicons — but the
 order-of-magnitude jump confirms the bulk-import approach is the right
 lever, not just a one-off fix.
 
+## A second, much bigger bulk import: Kaikki.org's isiXhosa extract
+
+**Source**: [kaikki.org/dictionary/Xhosa/](https://kaikki.org/dictionary/Xhosa/)
+— the same organization and JSONL format already used for lute-shona's
+Kaikki import, 3,371 distinct isiXhosa words extracted from English
+Wiktionary. Same deprecated-but-still-live download pattern as the
+Shona page.
+
+**Extraction reused isixhosa.click's proven method exactly**, not a
+fresh design: for every `forms`-listed surface form (singular and
+plural, each independently class-tagged), try every prefix in
+`NOUN_CLASS_PREFIXES` longest-first, ignore the source's own class
+label, gate on the vowel-stem requirement for
+`NOUN_PREFIXES_REQUIRE_VOWEL_STEM`, keep the first non-empty
+remainder. ~283 stub/redirect entries (Wiktionary pages like "bafana"
+whose only content is "simple plural of umfana," no `forms` data of
+their own) and ~28 hyphenated/multi-word forms were skipped, same
+categories excluded from the isixhosa.click round. Verb entries store
+the bare citation root directly (no `uku-` prefix at all, unlike
+Shona's Kaikki data, which inconsistently kept it on some entries) —
+extraction was just strip-diacritics, lowercase, strip the final
+vowel.
+
+**Net result**: 1,045 new noun roots (695→1,740) and 674 new verb
+roots (405→1,079) — roughly a 2.5x jump, the biggest single addition
+so far in either language's lexicon.
+
+**This is also, by a wide margin, the riskiest import so far.**
+Re-running both validation stories found **twelve** new collisions —
+six times more than the isixhosa.click round's two, from a lexicon
+addition roughly 2.5x the size rather than 20x. All twelve are common,
+basic words wrongly resolved through the verb branch once the much
+larger vocabulary gave them a coincidental match — see the
+`WORD_EXCEPTIONS` comments in `rules.py` for the mechanism of each:
+`imithi` (trees), `umsila`/`msila`/`kumsila` (tail), `umhlaba`
+(earth/world — this one's root, `hlab`, actually predates this round;
+it was only found now, testing a story that happens to use the word),
+`umzingeli`/`umrhwebi`/`abarhwebi`/`kubarhwebi` (agentive/derived nouns
+colliding with newly-seeded verb roots), `ndiyazi` ("I know," hiding an
+unmodeled vowel-elision process), `amabi` (bad things), and `ibambe`
+(it holds).
+
+**`ibambe` surfaced a genuinely new *kind* of risk**, not just another
+instance of the familiar one: both the wrong reading (`i`+`ba`+`mb`,
+consuming an optional object marker) and the right one (`i`+`bambe`,
+no object, using the fuller root `bamb`) independently resolve via the
+lexicon-gate mechanism — this isn't a coincidental stray match, it's
+two *simultaneously valid* analyses, and `_try_verb_slot`'s search
+order (try object-marker candidates before the no-object case) happens
+to prefer the wrong one. Worth watching for as the lexicon keeps
+growing: a bigger lexicon doesn't just make stray coincidental matches
+more likely, it also makes it more likely that consuming an *optional*
+slot (object marker, TAM) *also* independently resolves, not only that
+skipping it does. Fixed via `WORD_EXCEPTIONS` like the others rather
+than changing the search order — changing that order would need
+re-verifying every existing test that depends on the current one, and
+one confirmed instance isn't enough to justify that risk yet.
+
+**One case deliberately left unresolved**: `kubarhwebi` was first
+checked in isolation and left alone as a lower-confidence guess (no
+way to confirm which reading was right). Once `umrhwebi`/`abarhwebi`
+(the singular and plural of the same word) were independently
+confirmed wrong via the identical mechanism, the same fix was applied
+to `kubarhwebi` too — this is the general pattern for genuinely
+uncertain cases: leave them alone until either the ambiguity resolves
+on its own evidence (a sibling word confirming the pattern, as here)
+or a fluent speaker weighs in, don't guess just because a fix would be
+easy to write.
+
+**Scale note, stated plainly**: two validation stories covering ~540
+combined unique words is not enough to have confidence a 2.5x lexicon
+expansion is fully collision-free — it's enough to catch the most
+common patterns, which it did (12 real bugs found and fixed), but the
+same "growing the lexicon grows the collision surface" lesson from the
+isixhosa.click round applies with more force here, precisely because
+this round added proportionally more new material relative to what got
+tested. Treat this lexicon as **working and substantially improved,
+not as verified-complete** — the next real step is testing it against
+text this round wasn't built or checked against, the same way the
+`molo`/`apha` collisions were only found once the user tested real
+sentences after the first round, not by any amount of further
+self-review.
+
 ## Known gaps, not guessed at
 
 - **Verbal extensions** (causative/applicative/passive/reciprocal) —
@@ -401,14 +484,17 @@ lever, not just a one-off fix.
   before writing `NOUN_CLASS_PREFIXES`-style rules — do not guess a
   single `e-` = locative rule, since place names in particular are
   exactly the class most likely to break a generic rule.
-- **`NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` are no longer tiny** —
-  695 noun roots and 405 verb roots after the isixhosa.click bulk
-  import (up from ~30/~9), but still far short of full coverage for
-  ordinary running text. Keep growing from real reading text and
-  further verified bulk sources, not more reference-grammar mining in
-  the abstract, per lute-shona DESIGN.md section 9's calibration
-  finding — and re-run the real-text validation corpus (above) every
-  time, since a bigger lexicon reliably surfaces new collisions.
+- **`NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` are substantial now** —
+  1,740 noun roots and 1,079 verb roots after the isixhosa.click and
+  Kaikki-Xhosa bulk imports (up from ~30/~9), but still far short of
+  full coverage for ordinary running text, and — per the Kaikki-Xhosa
+  section above — not fully collision-checked at this size either.
+  Keep growing from real reading text and further verified bulk
+  sources, not more reference-grammar mining in the abstract, per
+  lute-shona DESIGN.md section 9's calibration finding — and re-run
+  the real-text validation corpus (above) every time, since a bigger
+  lexicon reliably surfaces new collisions, in growing numbers as the
+  Kaikki-Xhosa round's twelve (vs. the earlier round's two) shows.
 
 ## Forking notes for whoever builds the next one
 

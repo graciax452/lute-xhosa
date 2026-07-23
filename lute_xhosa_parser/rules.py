@@ -120,6 +120,62 @@ PROPER_NOUNS = set()
 # vowel "-a" -- i.e. read as "s/he gives", a real verb form that
 # happens to share a spelling with the unrelated adverb. True
 # homonym, same category as "uthi". Found by the user directly.
+#
+# Seven more collisions found running the two validation stories again
+# after the Kaikki-Xhosa bulk import (see the "third bulk source"
+# comment on NOUN_ROOT_LEXICON) -- same category as "molo"/"apha"
+# above, each a common/basic word wrongly resolved through the verb
+# branch once the much larger new vocabulary gave it a coincidental
+# match:
+# - "imithi" ("trees", imi+thi) -- NOT i(cl.9/10 concord)+mith(from
+#   "-mitha-", "to be pregnant")+i.
+# - "umsila"/"msila"/"kumsila" ("tail") -- NOT u/ku(subject)+m(object,
+#   him/her)+sil(from "-sila-", "to brew/grind")+a.
+# - "umhlaba" ("earth/world") -- NOT u(subject)+m(object)+hlab(from
+#   "-hlaba-", "to stab") -- this one predates the Kaikki-Xhosa round
+#   ("hlab" was already seeded from isixhosa.click) but was only found
+#   now, testing a real story that happens to use the word.
+# - "umzingeli" ("hunter", an agentive noun) -- NOT u(subject)+
+#   m(object)+zingel(from "-zingela-", "to hunt")+i. Unlike lute-shona's
+#   "mufundisi" (which turned out to be a genuinely correct
+#   compositional agentive reading), the verb-branch token boundary
+#   here (u|m|zingeli, 3 tokens) doesn't match what the correct
+#   noun-branch boundary would be (um|zingeli, 2 tokens) -- these are
+#   different splits, not two labels for the same one, so this is a
+#   real collision, not a coincidentally-correct alternate parse.
+# - "ndiyazi" ("I know [it]") -- NOT ndi+ya(present)+z(from "-za-",
+#   "to come")+i. The real root is "-azi-" ("to know"), but its
+#   initial vowel elides after the "-ya-" present marker (ya+azi ->
+#   yazi) -- an unmodeled vowel-coalescence process (same category as
+#   lute-shona's chi-/zvi- + vowel-initial-stem gap), which is what
+#   leaves "zi" exposed to a coincidental match against an unrelated
+#   short root instead.
+# - "amabi" ("bad things", ama-+bi) -- NOT a(cl.5/6 concord)+
+#   m(object)+ab(from "-aba-", "to share/distribute")+i.
+# - "ibambe" ("it holds"/similar, from "-bamba-", "to hold/catch") --
+#   resolves via the verb branch either way, but the *search order*
+#   picks the wrong resolution: trying object marker "ba" first
+#   leaves "mbe", which also happens to hit a real (different) root
+#   ("-mba-", "to dig"), so "i-ba-mbe" wins over the correct
+#   "i-bambe" (no object, root "bamb") purely because optional-object
+#   candidates are tried before the no-object case. This is a
+#   different *kind* of risk than the others -- not a stray
+#   coincidental root, but two *both-valid* resolutions where the
+#   search order favors the shallower, wrong one. Worth remembering as
+#   its own risk category if more instances turn up: a longer lexicon
+#   makes it more likely that consuming an optional slot (object
+#   marker, TAM) *also* accidentally resolves, not just that skipping
+#   it does.
+# Three more from the same root family, once "umrhwebi" ("trader",
+# singular) confirmed the pattern: "abarhwebi" ("traders", plural) and
+# "kubarhwebi" ("to/among the traders", locative on the whole class-2
+# noun with the augment elided) both resolve the same wrong way --
+# subject/concord + object "ba"(them) + rhweb(from "-rhweba-", "to
+# barter/trade") + i, instead of the correct aba-/ku-+aba- + "rhwebi"
+# noun reading. Originally "kubarhwebi" was left alone as a lower-
+# confidence guess (no sibling to compare against), but with
+# "umrhwebi"/"abarhwebi" both confirmed wrong via the identical
+# mechanism, the same fix clearly applies here too.
 WORD_EXCEPTIONS = {
     "kudala",
     "uthi",
@@ -131,6 +187,18 @@ WORD_EXCEPTIONS = {
     "kubuxoki",
     "molo",
     "apha",
+    "imithi",
+    "umsila",
+    "msila",
+    "kumsila",
+    "umhlaba",
+    "umzingeli",
+    "ndiyazi",
+    "amabi",
+    "ibambe",
+    "umrhwebi",
+    "abarhwebi",
+    "kubarhwebi",
 }
 
 # Confirmed past-tense ("a-past") subject-concord fusions, matched the
@@ -943,6 +1011,199 @@ NOUN_ROOT_LEXICON = {
     "zwane",  # toe
     "zwe",  # country
     "zwi",  # voice
+
+    # --- Third bulk source: Kaikki.org's isiXhosa Wiktionary extract,
+    # CC BY-SA 4.0 (Wiktionary content license) ---
+    # https://kaikki.org/dictionary/Xhosa/ -- same organization/format
+    # as the Kaikki extracts already used for lute-shona, 3,371 distinct
+    # words (bigger raw count than isixhosa.click, though with overlap).
+    # Extraction mirrored isixhosa.click's proven method exactly (see
+    # the block above): try every prefix in NOUN_CLASS_PREFIXES,
+    # longest-first, against every `forms`-listed surface form
+    # (singular and plural both, each independently tagged), ignore the
+    # source's own class label, gate on the vowel-stem requirement for
+    # NOUN_PREFIXES_REQUIRE_VOWEL_STEM, keep the first non-empty
+    # remainder. ~283 stub/redirect entries (pages like "bafana" whose
+    # only content is "simple plural of umfana", with no `forms` data of
+    # their own) and ~28 hyphenated/multi-word forms were skipped, same
+    # categories excluded from the isixhosa.click round. Tone-marked
+    # diacritics stripped via NFKD, same as every other Kaikki import.
+    # Net result: 1,045 new noun roots.
+    "abokwe", "abonkolo", "afobe", "agweba", "agwityi", "ahlukaniso",
+    "ahombe", "akhi", "akhulu", "akwatsha", "alathiso", "andle",
+    "ando", "ani", "antya", "anuse", "aphompolo", "arha",
+    "awomkhulu", "azi", "azinge", "azinzulu", "azisi", "ba",
+    "babalo", "babazo", "balo", "bamba", "bandezeli", "bandla",
+    "bango", "bani", "bawo", "bawomkhulu", "baya", "bhabhathane",
+    "bhadi", "bhafrum", "bhafu", "bhakabhaka", "bhaloni", "bhambathiso",
+    "bhanana", "bhanki", "bhanti", "bhari", "bhatom", "bhatyi",
+    "bhavu", "bhayaskopho", "bhayibhile", "bhayisikile", "bhejane", "bhekile",
+    "bheriyam", "bhexeshi", "bhinqa", "bhinqo", "bhiyozo", "bhobho",
+    "bhoda", "bhokhwe", "bhokisi", "bhomoyi", "bhono", "bhotolo",
+    "bhotwe", "bhulukhwe", "bhunga", "bhungane", "bi", "binzana",
+    "bizo", "boko", "bomvu", "bona", "bonda", "bonelelo",
+    "bongo", "boniso", "bophelelo", "bubu", "bulala", "bulali",
+    "buliso", "bulo", "bululu", "bumbi", "bunu", "butho",
+    "buzi", "caka", "cakazana", "camba", "caphucaphu", "cawa",
+    "cebo", "celo", "cesina", "chankcatho", "chibi", "chochoyi",
+    "chopho", "chotho", "chumisi", "chweli", "chwethezi", "cilikishe",
+    "cimbi", "cinezeli", "cingwane", "coci", "cuba", "cula",
+    "culi", "cwambu", "cwangciso", "cwecwe", "cwethe", "da",
+    "dada", "dade", "damu", "danga", "dayimani", "dayisi",
+    "dengwane", "desika", "dikshinari", "dilesi", "diliya", "dinala",
+    "dinga", "dingo", "dini", "dlabantu", "dlavu", "dlavuza",
+    "dlelo", "dlobha", "dlozi", "dlwengu", "dolophana", "dosha",
+    "dudla", "dudo", "duko", "duli", "dumzeli", "dunguli",
+    "dungulu", "dyakalashe", "dyarho", "dyokhwe", "dzedze", "ela",
+    "ele", "elungu", "elusi", "embe", "emi", "engwitshi",
+    "enja", "enzeko", "enzo", "epha", "esuthu", "ezinja",
+    "fa", "fana", "fanekiselo", "fanekisozwi", "fani", "feksi",
+    "fema", "fi", "finyezo", "fiyo", "flegi", "florini",
+    "folo", "fomu", "foni", "fosiforasi", "foti", "fotsholo",
+    "fowuni", "fudumezi", "fula", "fundo", "fuyi", "fuziselo",
+    "gada", "gaga", "galiyoni", "gandaganda", "gangxa", "gani",
+    "gaqa", "gaqo", "gatha", "gaxothi", "gcawu", "gciwane",
+    "gcobo", "geza", "gidimi", "gilamkhuba", "ginkci", "gogogo",
+    "golide", "gorha", "gosa", "gqibo", "gqomogqomo", "gqubuthelo",
+    "gqudu", "gqugula", "gqumo", "gqwetha", "gqwirhakazi", "gramza",
+    "gubhu", "gubu", "gunya", "gwala", "gwebu", "gwinya",
+    "gxagxa", "gxina", "gxobhozo", "hagu", "hambi", "hange",
+    "hayidrojini", "heji", "helegu", "hendi", "henyukazi", "hilihili",
+    "hlakulo", "hlali", "hlalo", "hlambi", "hlanga", "hlangala",
+    "hlanti", "hlawuli", "hlebo", "hleka", "hleli", "hlelo",
+    "hlengesi", "hlodi", "hloko", "hlolo", "hlolokazi", "hlomelo",
+    "hlonyane", "hlosi", "hlu", "hluze", "hluzi", "hlwa",
+    "hobe", "hogo", "holide", "hotele", "jaji", "jam",
+    "jelo", "jezi", "jogo", "kali", "kampu", "kantini",
+    "karukwini", "kawusi", "keki", "ketile", "keyiki", "khaba",
+    "khabhathi", "khabhoni", "khadbodi", "khala", "khaliso", "khalsiyam",
+    "khangati", "khankaso", "khankatha", "khapetshu", "khaphetshu", "khaphi",
+    "khasi", "khayithi", "khefi", "khemesti", "khenkethi", "khetha",
+    "khetshe", "khewu", "khi", "khitshane", "khitshi", "khiwane",
+    "khoba", "khohleli", "khokelo", "khokho", "kholonjane", "khombandlela",
+    "khombe", "khonkwane", "khonto", "khonzazana", "khonzi", "khophe",
+    "khosana", "khosazana", "khosi", "khosikazi", "khowa", "khozana",
+    "khozi", "khuba", "khukhu", "khuko", "khukukazi", "khululo",
+    "khupha", "khuseleko", "khuthala", "khwapha", "khwe", "khwebu",
+    "khwenene", "khwenkxe", "khwepha", "khwetha", "kirikitsi", "kogina",
+    "koma", "komiti", "komkhulu", "kona", "kopolo", "korokoro",
+    "kratshi", "krele", "krelekrele", "kriwi", "kro", "kroba",
+    "krokro", "kroti", "krwala", "krweqe", "kunzi", "kwere",
+    "lahle", "lali", "lambi", "lamuni", "landelayo", "lantshi",
+    "lanya", "lanyakazi", "laphu", "lawu", "lawulo", "layisensi",
+    "lekese", "leko", "lenga", "lengalenga", "leyi", "leyiti",
+    "lima", "limo", "lingane", "lisela", "lobi", "lokishi",
+    "lolo", "londa", "londolozo", "longwe", "lonji", "lonwabo",
+    "lori", "lothe", "lozi", "lulwane", "lumko", "lunda",
+    "lungelo", "lungiso", "luphala", "lusi", "lwa", "lwakhiwo",
+    "lwaluko", "lwane", "lwazi", "m", "mabonakude", "magneziyam",
+    "makhulu", "mamba", "mamva", "mangaliso", "mango", "maphambili",
+    "mazi", "mbabala", "mbaleki", "mbalelwano", "mbalisi", "mbalo",
+    "mbambano", "mbandezelo", "mbangwa", "mbeko", "mbeleko", "mbiza",
+    "mbizo", "mbola", "mbombo", "mbona", "mbongi", "mbongolo",
+    "mbovane", "mbubhane", "mbuzi", "melika", "melwana", "melwane",
+    "mfele", "mfundiso", "mfuyo", "mhemhe", "mi", "mozulu",
+    "mpala", "mpambano", "mpangele", "mpangelo", "mpatho", "mpembelelo",
+    "mpempe", "mpendlo", "mpepho", "mpi", "mpicotho", "mpindaphindo",
+    "mpisi", "mpofu", "mpompi", "mpuhliso", "mpukane", "mpumalanga",
+    "mpumelelo", "mpungulu", "mpungutye", "mpunzi", "mpuphuma", "muncumuncu",
+    "mvelaphi", "mvu", "mvumi", "mvuyo", "nakwe", "nama",
+    "nandi", "natha", "ncanca", "ncanda", "ncinda", "nciniba",
+    "ncumo", "ncuthu", "ncutshe", "ndaka", "ndeni", "ndi",
+    "ndibaniso", "ndlalifa", "ndle", "ndlwana", "ndondolo", "ndongomane",
+    "ndongwe", "nduku", "ndulana", "nduli", "ndumiso", "ndumo",
+    "nduna", "ndwe", "ndwendwe", "ndyebo", "nene", "nenga",
+    "nga", "ngabangaba", "ngada", "ngcaciso", "ngcamango", "ngcamba",
+    "ngcambu", "ngcatshi", "ngcebiso", "ngcelo", "ngcinga", "ngcobo",
+    "ngcola", "ngcombolo", "ngcongconi", "ngcongolo", "ngcuka", "ngculaza",
+    "ngcungcu", "ngcungela", "ngcuntsu", "ngcwaba", "ngcwabo", "ngcwambu",
+    "ngcwangciso", "ngcwele", "ngelosi", "ngeniso", "ngobozi", "ngolwane",
+    "ngonyama", "ngozi", "ngqala", "ngqalo", "ngqaphu", "ngqatha",
+    "ngqeqesho", "ngqesho", "ngqibo", "ngqikelelo", "ngqiniseko", "ngqiqo",
+    "ngqolowa", "ngqongqo", "ngqoqosho", "ngqosha", "ngqukuva", "ngqula",
+    "ngqumba", "ngqumbo", "ngquphantsi", "ngququzelelo", "ngqushu", "ngulube",
+    "ngunda", "ngungane", "nguqulelo", "nguqulo", "ngwane", "ngweletshetshe",
+    "ngwenkala", "ngwevu", "ngxabano", "ngxabela", "ngxande", "ngxanduva",
+    "ngxobo", "ngxothi", "ngxoxo", "ngxube", "ngxwabangxwaba", "nhanha",
+    "nina", "nini", "njengele", "njineli", "njingalwazi", "njoli",
+    "njongilanga", "njongo", "nkabi", "nkamela", "nkangeleko", "nkanyamba",
+    "nkawu", "nkcani", "nkcaso", "nkcazelo", "nkcazo", "nkcitho",
+    "nkcochoyi", "nkedama", "nkenketho", "nkewu", "nkitha", "nkohlakalo",
+    "nkokeli", "nkoko", "nkomfa", "nkonyane", "nkophe", "nkosana",
+    "nkosikazi", "nkozana", "nkozi", "nkozo", "nkqantosi", "nkqayi",
+    "nkqekezo", "nkqubela", "nkqwala", "nkratya", "nkrwebo", "nkubabulongwe",
+    "nkukho", "nkukhu", "nkuko", "nkula", "nkulu", "nkululeko",
+    "nkulumbuso", "nkungu", "nkuni", "nkunkuma", "nkunzi", "nkuphiswano",
+    "nkwakhwa", "nkwalimanzi", "nkwenkwezi", "nkxaso", "nkxwaleko", "nobhala",
+    "nodladla", "nogqaza", "nomadudwane", "nomanxezane", "nomatse", "nomyani",
+    "noncwadi", "nondlwane", "nondyebo", "nongendi", "nonkala", "noposi",
+    "nosilarha", "nothi", "nqamlezo", "nqanawa", "nqantloko", "nqatha",
+    "nqathe", "nqawa", "nqenerha", "nqina", "nqoba", "nqonqo",
+    "nqoza", "nqu", "nqugwala", "nqundu", "nqwela", "nqweno",
+    "ntakumba", "ntakwethu", "ntambane", "ntambo", "ntango", "ntase",
+    "ntente", "ntethe", "ntetho", "nti", "ntili", "ntla",
+    "ntlabathi", "ntlalo", "ntlama", "ntlanga", "ntlanganiso", "ntlanti",
+    "ntlantla", "ntlaselo", "ntlawulo", "ntlekisa", "ntlohlo", "ntlola",
+    "ntloni", "ntlontlo", "ntlu", "ntlutha", "ntlwathi", "ntolo",
+    "ntombazana", "ntonga", "ntotho", "ntothoviyane", "ntru", "ntrwana",
+    "ntsalela", "ntshaba", "ntshatsheli", "ntshebe", "ntshicilelo", "ntshili",
+    "ntshintsho", "ntsho", "ntsholo", "ntshonalanga", "ntshontsho", "ntshukumo",
+    "ntshulube", "ntshumayelo", "ntsika", "ntsikelelo", "ntsikizi", "ntsikrobana",
+    "ntsindiso", "ntsingiselo", "ntsizwa", "ntsokolo", "ntsomi", "ntsuleleko",
+    "ntsulelo", "ntsumantsumane", "ntsumpa", "ntswazi", "ntswidi", "ntuku",
+    "ntuli", "ntuthu", "ntwala", "ntyabontyi", "ntyafo", "ntywenka",
+    "nweba", "nxagu", "nxala", "nxalenye", "nxano", "nxantathu",
+    "nxanxadi", "nxaxheba", "nxele", "nxibamxhaka", "nyamakazi", "nyameko",
+    "nyangi", "nyani", "nyathelo", "nyathi", "nyazi", "nyhadala",
+    "nyholoba", "nyhweba", "nyibiba", "nyilo", "nyithi", "nyoko",
+    "nyonga", "nyongo", "nyoni", "nyonyovu", "nyulo", "nyushu",
+    "nzala", "nzame", "nzolo", "nzondo", "nzululwazi", "nzwakazi",
+    "ofa", "oji", "oldathi", "ongololo", "opholo", "osala",
+    "paji", "paki", "pala", "palamente", "palana", "papa",
+    "pasi", "peki", "peliti", "pensile", "pere", "pesika",
+    "petroli", "peyinti", "pha", "phakamiso", "phako", "phanda",
+    "phandle", "phango", "phaphu", "phathi", "phathiswa", "phefumlo",
+    "pheki", "phela", "phelo", "phepha", "phephamvume", "phephandaba",
+    "phezulu", "phini", "pholishi", "phosiso", "phupho", "phuthi",
+    "pili", "pleyiti", "polisa", "porho", "posi", "potaziyam",
+    "potyi", "pulazi", "qaba", "qadi", "qakamba", "qambelo",
+    "qaqa", "qaqaqa", "qaqawuli", "qaqoba", "qashiso", "qendu",
+    "qeqeshi", "qeshwa", "qhagi", "qhakuva", "qhalo", "qhaphu",
+    "qhawe", "qhayi", "qhekeza", "qhina", "qhiya", "qholo",
+    "qhosha", "qhubi", "qhude", "qhumiso", "qhwala", "qili",
+    "qingatha", "qinisekiso", "qithi", "qobokhe", "qokolo", "qolomba",
+    "qondiso", "qondo", "qonga", "qongqothwane", "qosho", "qu",
+    "qula", "qulu", "ququ", "ququzeleli", "qwane", "qwarhashe",
+    "qwayitho", "qwayito", "randi", "reki", "resiphi", "restyu",
+    "rhafu", "rhalarhume", "rhamba", "rhanisi", "rhanuga", "rharnate",
+    "rhasi", "rhatya", "rhewu", "rhofu", "rhubuluzi", "rhudo",
+    "rhumo", "rhwebo", "rozi", "sa", "sadlunge", "salfari",
+    "sarha", "sasazi", "sekela", "seko", "sela", "seli",
+    "sengwitshi", "sepha", "sesane", "sheko", "shishini", "shumi",
+    "shunqulelo", "shwa", "shwankathelo", "sibalikazi", "sibonda", "siko",
+    "silayi", "silivere", "sizi", "sodolophu", "sofa", "soldathi",
+    "somashishini", "sombululo", "somfazi", "songololo", "sonto", "sopholo",
+    "sosala", "sundulu", "suphu", "suthu", "suzo", "swazi",
+    "swekile", "sweleka", "takane", "talato", "tali", "tampu",
+    "tawuli", "tayala", "teknoloji", "teksi", "teps", "thafa",
+    "thambeko", "thamsanqa", "thana", "thandazwe", "thango", "thathi",
+    "the", "thembiso", "thengisi", "thetha", "thethe", "thintitha",
+    "thium", "thiyelo", "thokazi", "thole", "thombe", "thonyama",
+    "thoyilethi", "thsaba", "thuko", "thukuthezi", "thuli", "thulu",
+    "thunga", "thunywa", "thwa", "thwalo", "thwane", "tikoloshe",
+    "tipoti", "tishi", "toliki", "tolofiya", "tora", "toti",
+    "tovu", "trato", "tshaba", "tshakazi", "tshala", "tshana",
+    "tsheke", "tsheki", "tshintshi", "tshizi", "tsotsi", "tswele",
+    "tyathanga", "tyeba", "tyebi", "tyeleli", "tyhakala", "tyhefu",
+    "tyuthu", "tyuwa", "ulu", "vakalisi", "valo", "vatho",
+    "vili", "vimba", "vingco", "voti", "vumelwano", "vuno",
+    "vuthuvuthu", "vuyo", "vuzo", "wa", "wayini", "wulu",
+    "xa", "xam", "xande", "xetsha", "xhadi", "xhalanga",
+    "xoxo", "xoxozi", "xwebhu", "yalelo", "yalezo", "yelenqe",
+    "yezo", "yihlo", "yise", "zabalazo", "zala", "zalwane",
+    "zamo", "zantsi", "zathu", "zekeliso", "zembe", "ziba",
+    "zibulala", "zim", "zingeli", "zo", "zobo", "zukulwana",
+    "zwana",
 }
 
 # Closed set of word-initial verbal subject concords. Source:
@@ -1436,6 +1697,105 @@ VERB_ROOT_LEXICON = {
     "zob",  # draw
     "zol",  # calm down
     "zul",  # wander
+
+    # --- From Kaikki.org's isiXhosa Wiktionary extract, CC BY-SA 4.0 --
+    # see the matching comment above NOUN_ROOT_LEXICON for source and
+    # methodology. Verb word field is already the bare citation root
+    # (no uku- prefix, unlike Shona's Kaikki data), so extraction was
+    # just: strip diacritics, lowercase, strip the final vowel. A
+    # handful of very short (1-letter) roots came out of this --
+    # 'b'/'m'/'n'/'z', from the common 2-letter verbs -ba- (be/
+    # become), -ma- (halt/stop), -na- (rain), -za- (come) -- flagged as
+    # the same collision-risk category as the existing 1-letter 'w'/'y'
+    # entries above; not preemptively fixed, watch for collisions the
+    # same way the Shona short-root additions were checked (see
+    # tests/test_morphology.py and lute-shona's equivalent).
+    # Net result: 674 new verb roots.
+    "ab", "agwenx", "ahluk", "ahlukanis", "ahlul", "akh", "akham", "al",
+    "alaman", "alath", "alathis", "alel", "aluk", "alus", "ambath", "amkel",
+    "and", "andis", "andlal", "anek", "anel", "anelisek", "aphuk", "aphul",
+    "az", "azis", "b", "babaz", "balis", "balul", "bandezel", "banek",
+    "bas", "bax", "bebulul", "belek", "bengezel", "bethelel", "bhabh", "bhabhazel",
+    "bhadl", "bhadul", "bhanxek", "bhanyabhany", "bhaq", "bhatalis", "bhed", "bhej",
+    "bhentsis", "bhexesh", "bhid", "bhinq", "bhod", "bhol", "bhox", "bhuc",
+    "bhud", "bhudl", "bhukuq", "bhul", "bhuqabhuq", "bik", "bol", "bolek",
+    "bonakal", "bond", "bong", "bongoz", "bonisis", "bothoz", "buk", "bukek",
+    "bukekel", "bul", "bumb", "bun", "busis", "buth", "buyekez", "buyel",
+    "cac", "cacel", "calul", "camang", "cambalal", "ceb", "ceng", "cengcelez",
+    "chach", "chan", "chas", "chiz", "chokoz", "chong", "choph", "chub",
+    "chukumis", "chum", "chunub", "chwechwel", "chwel", "chwethez", "cik", "col",
+    "coth", "cothisis", "cukucez", "cuphul", "dakumb", "damb", "dambis", "dandaphis",
+    "danduluk", "dangalis", "del", "dend", "dilik", "dilishan", "dingek", "dinis",
+    "dl", "dlalis", "dlamk", "dlob", "dlokov", "dlwengul", "donts", "dubul",
+    "dud", "dudul", "dudum", "dumis", "dumzel", "dwelis", "dyarh", "dyibh",
+    "dyobh", "eb", "elus", "end", "enz", "enzakal", "enzakalis", "enzek",
+    "fanel", "fanis", "fef", "feketh", "fez", "fezekis", "finyez", "fot",
+    "fowun", "fowunel", "fuduk", "fudumez", "fukam", "fumb", "fumbath", "fundel",
+    "funquk", "funqul", "funx", "futh", "fuy", "gabadel", "gaq", "gawul",
+    "gcad", "gcagc", "gcakamel", "gcob", "gculel", "gcum", "gcwek", "gebhul",
+    "gibis", "gigithek", "gil", "giy", "godus", "gox", "gqats", "gqibel",
+    "gqithis", "gqobhok", "gqobhoz", "gqogq", "gqugul", "gqum", "gqush", "gqwes",
+    "gqweth", "gragram", "gray", "greny", "gubungel", "gudl", "guqul", "guqulel",
+    "gush", "gutyul", "gwaz", "gwencel", "gwint", "gxaban", "gxalek", "gxek",
+    "gxobh", "gxoth", "gxum", "hambel", "hambelan", "hend", "hl", "hlahlamb",
+    "hlakul", "hlambulul", "hlangan", "hlangul", "hlanz", "hlaz", "hlazek", "hlaziy",
+    "hlaziyek", "hleb", "hlehl", "hlekis", "hlel", "hlohloz", "hloml", "hlonel",
+    "hlub", "hlukuhl", "hlungis", "hluph", "hluphek", "hluth", "hluz", "hlwabis",
+    "hlwayel", "hlwempuz", "homb", "jaj", "jal", "jayiv", "jij", "jikel",
+    "jiwul", "jiy", "joj", "jolis", "jongan", "jongek", "jongis", "kats",
+    "kekel", "kel", "khahlel", "khaliph", "khand", "khangelek", "khankany", "khanuk",
+    "khany", "khanyel", "khas", "khathal", "khathalel", "khathalisek", "khathaz", "khathazek",
+    "khawul", "khawulel", "khenkcis", "khenketh", "khithik", "khohlis", "khohlw", "khokel",
+    "khol", "kholis", "kholisek", "kholw", "khony", "khoth", "khub", "khubek",
+    "khuhl", "khulis", "khululek", "khumsh", "khuphel", "khuphisan", "khuthal", "khuz",
+    "khwenc", "khwezel", "khwitsh", "korobh", "kral", "krazul", "krikriz", "krokr",
+    "kroz", "krun", "kruquk", "krwel", "lalis", "land", "langaz", "layish",
+    "leng", "leq", "leth", "lethis", "lim", "lindel", "ling", "linganis",
+    "lol", "londoloz", "lulek", "lumk", "lumkis", "luml", "luphal", "lus",
+    "luz", "m", "mangal", "mangalis", "many", "matanis", "mb", "mel",
+    "mhemhek", "mhomh", "mil", "mis", "mith", "mk", "monel", "mosh",
+    "mpompoz", "n", "nab", "nabis", "nak", "nakekel", "nambith", "nambuz",
+    "nath", "ncam", "ncamathel", "ncamis", "ncanc", "ncancis", "ncedis", "ncwin",
+    "ndiyakuthand", "ndwendwel", "ngcilez", "ngcol", "ngcwab", "ngcwal", "ngen", "ngenis",
+    "ngqal", "ngqaman", "ngqamanis", "ngqib", "ngqub", "ngqush", "nikel", "nityilik",
+    "nkcunkc", "nkqonkqoz", "nqakul", "nqand", "nqanqathek", "nqanqaz", "nqen", "nqeth",
+    "nqik", "nqom", "nqul", "nqum", "nquml", "nqwal", "nqwem", "nqwen",
+    "nqwenel", "ntam", "ntlont", "ntshontsh", "ntsonkoth", "ntyiloz", "ntywil", "nwabulul",
+    "nwenw", "nxakam", "nxanw", "nxul", "nyamek", "nyanis", "nyany", "nyanzel",
+    "nyanzelis", "nyathel", "nyathelis", "nyel", "nyhamnyhek", "nyibilik", "nyibilikis", "nyinyithekis",
+    "nyobulul", "nyul", "nyusel", "ohlway", "oj", "olul", "om", "omelel",
+    "omelez", "on", "onak", "onakalis", "ondl", "onel", "ong", "ongamel",
+    "ongez", "onqen", "onwab", "onwabel", "oph", "ophul", "oth", "othuk",
+    "othukulul", "othus", "oyik", "oyis", "ozel", "pakish", "penapen", "phal",
+    "phalal", "phalaz", "phamban", "phambuk", "phand", "phang", "phaph", "phazamis",
+    "phekezel", "phelek", "phelel", "phemb", "pheph", "pheth", "phikis", "pholis",
+    "phos", "phuhlis", "phumez", "phuncul", "phuphum", "phuthum", "pos", "pulush",
+    "qabaqabaz", "qabul", "qaj", "qalekis", "qamb", "qaqawul", "qash", "qengq",
+    "qeqesh", "qesh", "qhabalak", "qhagamshelan", "qhakaz", "qhal", "qham", "qhamuk",
+    "qhawuk", "qhawul", "qhekek", "qhelek", "qhin", "qhobosh", "qhomf", "qhosh",
+    "qhothoz", "qhots", "qhul", "qhum", "qhuqh", "qhwalel", "qhwith", "qikelel",
+    "qinis", "qinisel", "qondis", "qoqosh", "qub", "qubud", "qubul", "quk",
+    "qukumbel", "ququzel", "qwalasel", "qwel", "qweng", "rhabul", "rhal", "rharhaz",
+    "rhawuzel", "rhintyel", "rhogol", "rhon", "rhoxis", "rhweb", "ripoth", "sabel",
+    "sayin", "saz", "sek", "seng", "sez", "shenx", "shenxis", "shicilel",
+    "shishin", "shukux", "shwaban", "shwaq", "sikelel", "sil", "sin", "sind",
+    "sindis", "sing", "singath", "sombulul", "sukel", "sulel", "sungul", "suz",
+    "thakath", "thakazelel", "thambis", "thandek", "thelekelel", "thez", "thimb", "thingaz",
+    "thintel", "thiy", "thobek", "thoth", "thumel", "thuntubal", "thus", "thuth",
+    "thuthuz", "thwas", "thwes", "tolik", "tshabalal", "tshayel", "tshic", "tshisek",
+    "tshitshilizel", "tshiz", "tsho", "tshutshis", "tshwez", "tsibatsib", "tswin", "tswitswiz",
+    "twabulul", "twezek", "tyabul", "tyekez", "tyel", "tyelel", "tyesh", "tyeshel",
+    "tyhaf", "tyhafis", "tyhal", "tyhil", "tyhiliz", "tyhoboz", "tyhol", "tyhuth",
+    "tyibilik", "tyis", "tyumb", "tyumz", "tywin", "vakal", "valel", "vavany",
+    "vez", "vik", "vimb", "vingc", "visis", "vith", "viv", "vot",
+    "votel", "vun", "vund", "vus", "vuselel", "vuth", "vuthulul", "vuthuz",
+    "vuthw", "vuz", "wahl", "wel", "win", "wol", "wulul", "xabel",
+    "xabisek", "xak", "xakek", "xax", "xel", "xelegwis", "xhabh", "xhal",
+    "xhaml", "xhaph", "xhel", "xhol", "xhom", "xhumaxhum", "xhuth", "xhuzul",
+    "xhwalek", "xhwil", "xhwith", "xing", "xol", "xov", "xox", "xoz",
+    "xub", "xubh", "xukux", "xway", "yalez", "yelenq", "yol", "yolis",
+    "z", "zabalaz", "zaml", "zekelel", "zel", "zinz", "zolis", "zum",
+    "zungul", "zuz",
 }
 
 # Terminal vowels. Never emitted as their own token -- see lute-shona

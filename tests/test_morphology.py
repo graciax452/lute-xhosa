@@ -34,7 +34,8 @@ def test_noun_classes_singular_plural_pairs():
     # cl.3/4 (um-/imi-)
     check("umvubu", ["um", "vubu"])  # hippo
     check("imivubu", ["imi", "vubu"])  # hippos
-    check("imithi", ["imi", "thi"])  # trees ("umthi" singular is a WORD_EXCEPTIONS collision, see test_verb_noun_branch_collision_exceptions)
+    # "imithi" (trees) is now ALSO a WORD_EXCEPTIONS collision, same as
+    # "umthi" the singular -- see test_verb_noun_branch_collision_exceptions
     # cl.5/6 (ili-/ama-)
     check("ilifu", ["ili", "fu"])  # cloud
     check("amafu", ["ama", "fu"])  # clouds
@@ -148,11 +149,30 @@ def test_verb_noun_branch_collision_exceptions():
     check("molo", ["molo"])  # hello (greeting) -- NOT m(cl.1/3, before vowel stem)+olo
     check("Molo", ["Molo"])
     check("apha", ["apha"])  # here (adverb) -- NOT a(cl.5/6 concord)+ph(give)+a
+    # Seven more from the Kaikki-Xhosa bulk import round -- see rules.py
+    # for the exact mechanism of each.
+    check("imithi", ["imithi"])  # trees -- NOT i+mith(be pregnant)+i;
+    # note this used to be a *correct* split before this round (see
+    # below), now needs the exception like its singular "umthi" already did
+    check("umsila", ["umsila"])  # tail -- NOT u+m+sil(brew/grind)+a
+    check("msila", ["msila"])
+    check("kumsila", ["kumsila"])
+    check("umhlaba", ["umhlaba"])  # earth/world -- NOT u+m+hlab(stab)+a
+    check("umzingeli", ["umzingeli"])  # hunter -- NOT u+m+zingel(hunt)+i
+    check("ndiyazi", ["ndiyazi"])  # I know [it] -- NOT ndi+ya+z(come)+i
+    check("amabi", ["amabi"])  # bad things -- NOT a+m+ab(share)+i
+    check("ibambe", ["ibambe"])  # it holds -- NOT i+ba(object)+mb(dig)+e;
+    # the correct reading (root "bamb", no object) also resolves on its
+    # own, but search order tries the object-marker reading first
+    # since both happen to succeed -- see rules.py for the general risk
+    # this points at.
+    check("umrhwebi", ["umrhwebi"])  # trader -- NOT u+m+rhweb(barter)+i
+    check("abarhwebi", ["abarhwebi"])  # traders (plural)
+    check("kubarhwebi", ["kubarhwebi"])  # to/among the traders
     # Same derivational/root families, but NOT exceptions -- these
     # correctly resolve on their own since they don't end in a valid
     # terminal vowel (verb-slot's stem resolver requires one):
     check("uqhekezo", ["u", "qhekezo"])
-    check("imithi", ["imi", "thi"])
     # "a" and "m" are genuinely useful prefixes elsewhere -- confirm the
     # exceptions above didn't collaterally break them:
     check("adala", ["a", "dala"])  # s/he creates (cl.5/6 concord "a" + root "dal" + -a)
